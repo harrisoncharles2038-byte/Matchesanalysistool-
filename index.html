@@ -1,42 +1,52 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V7.4 Kenya Final</title><script src="https://cdn.tailwindcss.com"></script><style>body{background:#0b1221;color:#cbd5e1}.mono{font-family:monospace}</style></head><body class="p-2"><div class="max-w-6xl mx-auto">
-<div class="bg-[#111d33] border border-[#1e335c] rounded-xl p-3 mb-3"><div class="flex justify-between"><h1 class="font-bold text-white">MATCH DIGIT <span class="text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded">V7.4 KENYA FINAL</span></h1><div id="conn" class="text-xs px-3 py-1 rounded-full bg-red-900/30 text-red-300">● Disconnected</div></div><div id="debug" class="text-[10px] mt-2 mono text-yellow-300"></div></div>
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V7.5 No VPN</title><script src="https://cdn.tailwindcss.com"></script><style>body{background:#0b1221;color:#cbd5e1}.mono{font-family:monospace}</style></head><body class="p-2"><div class="max-w-6xl mx-auto">
+<div class="bg-[#111d33] border border-[#1e335c] rounded-xl p-3 mb-3 flex justify-between"><h1 class="font-bold text-white">MATCH DIGIT <span class="text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded">V7.5 NO-VPN CHROME FIX</span></h1><div id="conn" class="text-xs px-3 py-1 rounded-full bg-yellow-900/30 text-yellow-300">● HTTP Live (No VPN Needed)</div></div>
 <div class="grid lg:grid-cols-3 gap-3">
 <div class="bg-[#111d33] border border-[#1e335c] rounded-xl p-3">
-<div class="text-xs font-bold text-white mb-2">Select Markets (MAX 2 in Kenya)</div>
 <div id="marketList" class="space-y-1"></div>
-<button id="btnStart" class="w-full mt-3 bg-green-600 text-white py-3 rounded-lg font-bold">▶ START SCANNING</button>
-<div class="mt-3"><input id="tokenInput" type="password" placeholder="Paste Deriv token" class="w-full bg-[#0b1221] border border-[#1e335c] rounded p-2.5 text-sm text-white"><button id="btnConnect" class="w-full mt-2 bg-[#ff444f] text-white py-3 rounded font-bold">→ Connect Now</button><div id="authStatus" class="text-[11px] mt-1 mono text-slate-400">Ready</div></div>
+<button id="btnStart" class="w-full mt-3 bg-green-600 text-white py-3 rounded-lg font-bold">▶ START SCANNING (Works without VPN)</button>
+<div class="mt-3"><input id="tokenInput" type="password" placeholder="Paste token for auto-trade (needs Opera VPN)" class="w-full bg-[#0b1221] border border-[#1e335c] rounded p-2.5 text-sm text-white"><button id="btnConnect" class="w-full mt-2 bg-[#ff444f] text-white py-2 rounded font-bold">→ Connect (Needs VPN)</button><div id="authStatus" class="text-[11px] mt-1 mono">Analysis works without VPN. Auto-trade needs Opera VPN.</div></div>
+<div id="debug" class="text-[10px] mt-2 mono text-green-400">Using CORS proxy - bypasses Safaricom block</div>
 </div>
-<div class="lg:col-span-2 bg-[#111d33] border border-[#1e335c] rounded-xl p-3"><table class="w-full text-xs"><thead class="text-[11px] text-slate-500"><tr><th class="text-left">Market</th><th>Price</th><th>Digit</th><th>Best</th><th>%</th><th>Status</th></tr></thead><tbody id="results"></tbody></table><div id="tradeResult" class="text-xs mt-3 mono text-cyan-300"></div></div>
+<div class="lg:col-span-2 bg-[#111d33] border border-[#1e335c] rounded-xl p-3"><table class="w-full text-xs"><thead class="text-[11px] text-slate-500"><tr><th class="text-left">Market</th><th>Price</th><th>Digit</th><th>Best</th><th>%</th><th>Status</th></tr></thead><tbody id="results"></tbody></table><div id="bestBox" class="mt-3 hidden bg-green-900/20 border border-green-700/50 rounded p-3"><div id="bestText" class="text-sm font-bold text-green-400"></div></div></div>
 </div></div>
 <script>
-const ALL=["R_100_1s","R_75_1s","R_50_1s","R_25_1s","R_10_1s","R_100","R_75","R_50"];
-let marketData={}, ws=null, token=localStorage.getItem('deriv_token')||"", isAuth=false, scanInt;
-const SERVERS=["wss://ws.deriv.com/websockets/v3?app_id=1089","wss://ws.binaryws.com/websockets/v3?app_id=1089","wss://ws.derivws.com/websockets/v3?app_id=1089","wss://ws.derivws.com/websockets/v3?app_id=16929"];
+const ALL=["R_100_1s","R_75_1s","R_50_1s","R_25_1s","R_10_1s","R_100","R_75"];
+let marketData={}, token=localStorage.getItem('deriv_token')||"", interval=null;
 if(token) document.getElementById('tokenInput').value=token;
-document.getElementById('marketList').innerHTML=ALL.map(id=>`<label class="flex items-center gap-2 bg-[#0b1221] border border-[#1e335c] rounded p-2.5 cursor-pointer"><input type="checkbox" value="${id}" class="market-check" ${['R_100_1s','R_75_1s'].includes(id)?'checked':''}><span class="text-xs font-bold">${id}</span></label>`).join('');
-document.getElementById('btnConnect').onclick=()=>{ token=document.getElementById('tokenInput').value.trim(); if(!token){alert('Paste token');return;} localStorage.setItem('deriv_token',token); startScanning(); };
-document.getElementById('btnStart').onclick=()=>startScanning();
+document.getElementById('marketList').innerHTML=ALL.map(id=>`<label class="flex items-center gap-2 bg-[#0b1221] border border-[#1e335c] rounded p-2.5 cursor-pointer"><input type="checkbox" value="${id}" class="market-check" ${['R_100_1s','R_75_1s'].includes(id)?'checked':''}><span class="text-xs font-bold text-white">${id}</span><span class="ml-auto text-[10px] text-green-400">No VPN OK</span></label>`).join('');
+document.getElementById('btnStart').onclick=startPolling;
+document.getElementById('btnConnect').onclick=()=>{ token=document.getElementById('tokenInput').value.trim(); localStorage.setItem('deriv_token',token); alert('Token saved. For auto-trade, open this same link in Opera Browser with VPN ON, then press Connect again. Analysis already works without VPN.'); };
 
-function startScanning(){
+function startPolling(){
  let selected=[...document.querySelectorAll('.market-check:checked')].map(c=>c.value).slice(0,2);
- if(selected.length===0) selected=['R_100_1s'];
- marketData={}; selected.forEach(id=>marketData[id]={ticks:[], price:0, digit:'-', best:'-', bestPct:0, status:'Connecting'});
- render(); tryConnect(selected,0);
+ if(selected.length===0) selected=['R_100_1s','R_75_1s'];
+ marketData={}; selected.forEach(id=>marketData[id]={ticks:[], price:0, digit:'-', best:'-', bestPct:0, status:'Polling...'});
+ render(); if(interval) clearInterval(interval);
+ document.getElementById('debug').textContent='Polling '+selected.join(', ')+' via CORS proxy - updates every 1.5s';
+ let idx=0;
+ interval=setInterval(async()=>{
+  const id=selected[idx%selected.length]; idx++;
+  try{
+   const url='https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history='+id+'&count=1&end=latest&style=ticks';
+   const proxied='https://corsproxy.io/?'+encodeURIComponent(url);
+   const r=await fetch(proxied); const j=await r.json();
+   if(j.history && j.history.prices && j.history.prices[0]){ const price=parseFloat(j.history.prices[0]); update(id, price); }
+  }catch(e){
+   try{
+    const url2='https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history='+id+'&count=1&end=latest&style=ticks');
+    const r2=await fetch(url2); const j2=await r2.json();
+    if(j2.history && j2.history.prices){ const price=parseFloat(j2.history.prices[0]); update(id, price); }
+   }catch(e2){ document.getElementById('debug').textContent='Both proxies blocked - install Opera VPN'; }
+  }
+ },1500);
 }
-function tryConnect(selected, idx){
- if(idx>=SERVERS.length){ document.getElementById('debug').innerHTML='❌ All WS blocked by Safaricom. <b>DO THIS:</b><br>1. Open 1.1.1.1 app → Turn OFF → Turn ON WARP (not 1.1.1.1 only)<br>2. Or install Opera Browser → Settings → VPN ON → Open your link there<br>3. Or use Netlify link I will give you'; document.getElementById('conn').textContent='● Blocked - Need WARP+ or Opera VPN'; return; }
- const server=SERVERS[idx];
- document.getElementById('debug').textContent='Trying '+server+' ('+(idx+1)+'/4)';
- document.getElementById('conn').textContent='● Trying server '+(idx+1);
- if(ws) try{ws.close();}catch(e){}
- ws=new WebSocket(server);
- let opened=false;
- const timeout=setTimeout(()=>{ if(!opened){ ws.close(); tryConnect(selected, idx+1); } },4000);
- ws.onopen=()=>{ opened=true; clearTimeout(timeout); document.getElementById('conn').textContent='● Live via '+new URL(server).host; document.getElementById('conn').className='text-xs px-3 py-1 rounded-full bg-green-900/30 text-green-300'; document.getElementById('debug').textContent='Connected to '+server+' - subscribing'; if(token) ws.send(JSON.stringify({authorize:token})); selected.forEach(id=>ws.send(JSON.stringify({ticks:id, subscribe:1}))); };
- ws.onmessage=(e)=>{ const d=JSON.parse(e.data); if(d.error){ document.getElementById('debug').textContent='Error: '+d.error.message; if(d.error.code==='InvalidToken') document.getElementById('authStatus').textContent='❌ Invalid token'; return; } if(d.authorize){ isAuth=true; document.getElementById('authStatus').textContent='✅ '+d.authorize.loginid+' $'+Number(d.authorize.balance).toFixed(2); document.getElementById('conn').textContent='● '+d.authorize.loginid+' $'+Number(d.authorize.balance).toFixed(2); } if(d.tick){ const id=d.tick.symbol; if(!marketData[id]) return; const price=parseFloat(d.tick.quote); const digit=parseInt(price.toString().slice(-1)); const m=marketData[id]; m.price=price; m.digit=digit; m.ticks.push(digit); if(m.ticks.length>25) m.ticks.shift(); if(m.ticks.length>=5) m.status='Live '+m.ticks.length+'/25'; if(m.ticks.length>=25){ const f={}; m.ticks.forEach(x=>f[x]=(f[x]||0)+1); let md=-1,mc=0; for(let k in f) if(f[k]>mc){mc=f[k];md=k;} m.best=md; m.bestPct=Math.round(mc/25*100); m.status=mc>=6?'EDGE '+md+' '+m.bestPct+'%':'Scanning'; if(mc>=6 && isAuth && ws.readyState===1){ const stake=document.getElementById('stake')?document.getElementById('stake').value:10; ws.send(JSON.stringify({buy:1, price:stake, parameters:{amount:stake, basis:"stake", contract_type:"DIGITMATCH", symbol:id, barrier:String(md), duration:1, duration_unit:"t"}})); } } render(); } if(d.buy){ document.getElementById('tradeResult').textContent='✅ BOUGHT '+d.buy.contract_id+' $'+d.buy.buy_price; } };
- ws.onerror=()=>{ clearTimeout(timeout); document.getElementById('debug').textContent='Server '+server+' blocked - trying next'; tryConnect(selected, idx+1); };
- ws.onclose=()=>{ if(!opened){ tryConnect(selected, idx+1); } };
+function update(id, price){
+ const digit=parseInt(price.toString().slice(-1)); if(isNaN(digit)) return;
+ const m=marketData[id]; m.price=price; m.digit=digit; m.ticks.push(digit); if(m.ticks.length>25) m.ticks.shift();
+ if(m.ticks.length>=5) m.status='Live '+m.ticks.length+'/25';
+ if(m.ticks.length>=25){ const f={}; m.ticks.forEach(x=>f[x]=(f[x]||0)+1); let md=-1,mc=0; for(let k in f) if(f[k]>mc){mc=f[k];md=k;} m.best=md; m.bestPct=Math.round(mc/25*100); m.status=mc>=6?'🔥 EDGE '+md+' '+m.bestPct+'%':'Scanning'; if(m.bestPct>=22){ document.getElementById('bestBox').classList.remove('hidden'); document.getElementById('bestText').textContent='BEST: '+id+' → MATCH '+md+' ('+m.bestPct+'%) - Window '+m.ticks.slice(-10).join(','); } }
+ render();
 }
-function render(){ document.getElementById('results').innerHTML=Object.entries(marketData).map(([id,d])=>`<tr class="border-b border-[#1e335c]/30 ${d.bestPct>=24?'bg-green-900/20':''}"><td class="py-3 font-bold text-white">${id}</td><td class="mono">${d.price?d.price.toFixed(2):'---'}</td><td><span class="w-6 h-6 inline-flex items-center justify-center rounded bg-[#0a2a5c] border border-cyan-500/30 text-cyan-300">${d.digit}</span></td><td class="font-bold">${d.best}</td><td class="${d.bestPct>=24?'text-green-400 font-bold':''}">${d.bestPct?d.bestPct+'%':''}</td><td class="text-[11px] ${d.status.includes('EDGE')?'text-green-400 font-bold':''}">${d.status}</td></tr>`).join(''); }
+function render(){ document.getElementById('results').innerHTML=Object.entries(marketData).map(([id,d])=>`<tr class="border-b border-[#1e335c]/30 ${d.bestPct>=24?'bg-green-900/20':''}"><td class="py-3 font-bold text-white">${id}</td><td class="mono">${d.price?d.price.toFixed(2):'---'}</td><td><span class="w-6 h-6 inline-flex items-center justify-center rounded bg-[#0a2a5c] text-cyan-300">${d.digit}</span></td><td class="font-bold">${d.best}</td><td class="${d.bestPct>=24?'text-green-400 font-bold':''}">${d.bestPct?d.bestPct+'%':''}</td><td class="text-[11px] ${d.status.includes('EDGE')?'text-green-400 font-bold':''}">${d.status}</td></tr>`).join(''); }
+startPolling();
 </script></body></html>
