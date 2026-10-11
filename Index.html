@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Digit Analyzer - R_10</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@600;700&display=swap');
+body{font-family:'Inter',sans-serif;background:#0f172a;color:white}
+.mono{font-family:'JetBrains Mono',monospace}
+.scanner-ring{animation:spin 3s linear infinite}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.glow{box-shadow:0 0 20px rgba(59,130,246,0.5)}
+</style>
+</head>
+<body class="min-h-screen p-3">
+<div class="flex justify-between items-center mb-3 bg-slate-800 rounded-xl p-3">
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">M</div>
+    <div>
+      <div class="font-bold text-sm">Match Digit Pro</div>
+      <div id="connStatus" class="text-[10px] text-yellow-400">Connecting...</div>
+    </div>
+  </div>
+  <select id="marketSelect" class="bg-slate-700 text-xs rounded px-2 py-1">
+    <option value="R_10">R_10 Volatility 10 (1s)</option>
+    <option value="R_10_2s">R_10 Volatility 10 (2s)</option>
+    <option value="R_25">R_25</option>
+    <option value="R_75">R_75</option>
+    <option value="R_100">R_100</option>
+  </select>
+</div>
+
+<div class="grid grid-cols-2 gap-3">
+  <div class="bg-white text-slate-900 rounded-2xl p-4 glow">
+    <div class="flex justify-between items-center mb-3">
+      <span id="marketLabel" class="text-[11px] font-bold bg-slate-100 px-2 py-1 rounded">R_10 Volatility 10 Index (2s)</span>
+      <span class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded-full">LIVE PRICE 2s</span>
+    </div>
+    <div class="text-center">
+      <div id="livePrice" class="text-4xl font-black">---.--</div>
+      <div class="text-[10px] text-slate-400 mono mt-1">QUOTE • DERIV OFFICIAL FEED</div>
+      <div class="flex justify-center gap-2 mt-4">
+        <div class="bg-slate-900 text-white rounded-xl px-4 py-2">
+          <div class="text-[9px] text-slate-400">LAST DIGIT</div>
+          <div id="lastDigit" class="text-2xl font-black">-</div>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2">
+          <div class="text-[9px] text-blue-600">TICKS COUNT</div>
+          <div id="tickCount" class="text-2xl font-black text-blue-600">0/25</div>
+        </div>
+      </div>
+    </div>
+    <div class="relative w-28 h-28 mx-auto mt-5">
+      <svg class="w-full h-full scanner-ring" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" stroke-width="8"/>
+        <circle cx="50" cy="50" r="45" fill="none" stroke="#3b82f6" stroke-width="8" stroke-dasharray="70 213" stroke-linecap="round"/>
+      </svg>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <div id="scanTimer" class="text-[10px] font-bold text-blue-600">SCAN 00:00</div>
+        <div class="text-[8px] text-slate-400">ROLLING WINDOW</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-slate-800 rounded-2xl p-4">
+    <div class="flex justify-between items-center mb-3">
+      <span class="text-xs font-bold">Matches Only Analysis</span>
+      <span class="text-[9px] bg-green-500 px-2 py-1 rounded-full">ANALYZING</span>
+    </div>
+    <div class="text-[10px] text-slate-400 mb-3">SCANNING 25-TICK ROLLING WINDOW</div>
+    <div class="space-y-2" id="digitBars"></div>
+    <div class="mt-4 bg-slate-900 rounded-xl p-3 border border-blue-500/30">
+      <div class="text-[9px] text-slate-400">PREDICTION</div>
+      <div id="prediction" class="text-xl font-black text-green-400 mt-1">Waiting for 25 ticks...</div>
+      <div id="confidence" class="text-[11px] text-slate-300 mt-1">Collecting data</div>
+    </div>
+  </div>
+</div>
+
+<div id="authCard" class="mt-3 bg-white text-slate-900 rounded-2xl p-3 flex justify-between items-center">
+  <div>
+    <div class="text-xs font-bold">Authentication</div>
+    <div id="authText" class="text-[11px] text-slate-500">Public feed - click Login to trade</div>
+  </div>
+  <button id="loginBtn" onclick="loginWithDeriv()" class="bg-slate-900 text-white text-xs px-4 py-2 rounded-full font-bold">Login with Deriv</button>
+</div>
+
+<script>
+const APP_ID = 1089;
+let ws, tickHistory=[], scanSeconds=0, currentMarket="R_10";
+function connect(market){
+  if(ws) ws.close(); currentMarket=market; tickHistory=[];
+  ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
+  ws.onopen = () => {
+    document.getElementById('connStatus').innerText="Connected ✓";
+    ws.send(JSON.stringify({ticks_history:market,end:"latest",count:25,style:"ticks"}));
+    let t=localStorage.getItem('deriv_token'); if(t) ws.send(JSON.stringify({authorize:t}));
+  };
+  ws.onmessage = (e)=>{
+    const data=JSON.parse(e.data);
+    if(data.history){
+      tickHistory=data.history.prices.map(p=>{let s=p.toString(); return {price:p,digit:parseInt(s.slice(-1))||0};});
+      updateUI(); ws.send(JSON.stringify({ticks:market,subscribe:1}));
+    }
+    if(data.tick){
+      let price=data.tick.quote; let last=tickHistory.length?tickHistory[tickHistory.length-1].price:null;
+      if(price!==last){ tickHistory.push({price,digit:parseInt(price.toString().slice(-1))}); if(tickHistory.length>25) tickHistory.shift(); updateUI(); }
+    }
+    if(data.authorize){
+      document.getElementById('authText').innerText=`Connected: ${data.authorize.loginid} • $${data.authorize.balance}`;
+      document.getElementById('authCard').style.background="#dcfce7";
+      document.getElementById('loginBtn').innerText="Logout"; document.getElementById('loginBtn').onclick=()=>{localStorage.removeItem('deriv_token'); location.reload();};
+    }
+  };
+}
+function updateUI(){
+  if(!tickHistory.length) return;
+  let last=tickHistory[tickHistory.length-1];
+  document.getElementById('livePrice').innerText=last.price.toFixed(3);
+  document.getElementById('lastDigit').innerText=last.digit;
+  document.getElementById('tickCount').innerText=`${tickHistory.length}/25`;
+  let counts=Array(10).fill(0); tickHistory.forEach(t=>counts[t.digit]++);
+  let max=Math.max(...counts); let match=counts.indexOf(max); let perc=Math.round((max/tickHistory.length)*100);
+  let html=""; for(let i=0;i<10;i++){let w=tickHistory.length?Math.round((counts[i]/max)*100):0; let isMax=i===match&&tickHistory.length>=25; html+=`<div class="flex items-center gap-2"><div class="text-[10px] w-3">${i}</div><div class="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden"><div class="h-full ${isMax?'bg-green-400':'bg-blue-500'}" style="width:${w}%"></div></div><div class="text-[10px] w-6 text-right">${counts[i]}</div></div>`;}
+  document.getElementById('digitBars').innerHTML=html;
+  if(tickHistory.length>=25){document.getElementById('prediction').innerText=`MATCH ${match}`; document.getElementById('confidence').innerText=`${perc}% • ${max} times in last 25`;}
+}
+function loginWithDeriv(){let token=prompt("Paste API Token from app.deriv.com > API Token:"); if(token){localStorage.setItem('deriv_token',token.trim()); ws.send(JSON.stringify({authorize:token.trim()}));}}
+document.getElementById('marketSelect').onchange=(e)=>{document.getElementById('marketLabel').innerText=e.target.options[e.target.selectedIndex].text; connect(e.target.value);};
+setInterval(()=>{scanSeconds++; let m=String(Math.floor(scanSeconds/60)).padStart(2,'0'); let s=String(scanSeconds%60).padStart(2,'0'); document.getElementById('scanTimer').innerText=`SCAN ${m}:${s}`; if(scanSeconds>=10) scanSeconds=0;},1000);
+connect(currentMarket);
+</script>
+</body>
+</html>
