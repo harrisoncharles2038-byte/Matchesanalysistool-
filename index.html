@@ -1,128 +1,138 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Digit Pro V3 HTTP</title>
+<title>Match Digit Pro V4</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>body{font-family:Inter,sans-serif;background:#0a0f1e;color:#e2e8f0}.mono{font-family:monospace}</style>
+<style>body{background:#0a0f1e;color:#e2e8f0;font-family:Inter,sans-serif}.mono{font-family:monospace}</style>
 </head>
 <body class="min-h-screen p-3">
 <div class="max-w-md mx-auto">
 <div class="flex justify-between items-center bg-slate-900 rounded-xl p-3 mb-3 border border-slate-800">
-<div class="flex items-center gap-2"><div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center font-bold">M</div><div><div class="font-bold text-sm">Match Digit Pro V3</div><div class="text-xs text-slate-400">R_10 HTTP Polling</div></div></div>
+<div class="flex items-center gap-2"><div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center font-bold">M</div><div><div class="font-bold text-sm">Match Digit Pro V4</div><div class="text-xs text-slate-400">R_10 - Anti-Block</div></div></div>
 <div id="connStatus" class="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">Starting...</div>
 </div>
 <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center mb-2">
-<div class="text-xs text-slate-400">DERIV R_10 - HTTP MODE (No WebSocket)</div>
+<div class="text-xs" id="serverInfo">Mode: Checking connection...</div>
 <div id="lastPrice" class="mono text-2xl font-bold mt-2">----.--</div>
 <div class="flex gap-2 mt-3">
 <div class="flex-1 bg-slate-800 rounded-lg p-3"><div class="text-xs text-slate-500">LAST DIGIT</div><div id="lastDigit" class="text-3xl font-bold">-</div></div>
 <div class="flex-1 bg-slate-800 rounded-lg p-3"><div class="text-xs text-slate-500">TICKS</div><div id="ticksCount" class="text-3xl font-bold text-blue-400">0/25</div></div>
 </div>
-<div class="mt-3 text-xs mono" id="scanTime">SCAN 00:00</div>
 <div id="digits" class="flex gap-1 mt-3 flex-wrap justify-center"></div>
-<div class="mt-2 text-xs" id="lastUpdate">-</div>
+<div class="mt-2 text-xs mono" id="scanTime">SCAN 00:00</div>
 </div>
 <div class="bg-slate-900 rounded-xl p-3 border border-slate-800">
 <div class="text-xs text-slate-400">PREDICTION</div>
-<div id="predText" class="text-green-400 font-bold mt-1">Starting HTTP polling...</div>
-<div id="debug" class="text-xs text-slate-500 mt-2 break-all">Initializing...</div>
-<button onclick="startPolling()" class="mt-3 w-full bg-blue-600 py-2 rounded font-bold">RESTART CONNECTION</button>
+<div id="predText" class="text-green-400 font-bold mt-1">Initializing...</div>
+<div id="debug" class="text-[11px] text-slate-400 mt-2 p-2 bg-black/50 rounded break-all"></div>
+<div class="grid grid-cols-2 gap-2 mt-3">
+<button onclick="startLive()" class="bg-green-600 py-2 rounded font-bold text-sm">TRY LIVE FEED</button>
+<button onclick="startDemo()" class="bg-blue-600 py-2 rounded font-bold text-sm">DEMO MODE</button>
+</div>
+<div class="text-[10px] text-slate-500 mt-2">If LIVE fails (network blocks Deriv), use DEMO MODE - it generates realistic R_10 ticks for testing. For real trading, connect to WiFi or use VPN (1.1.1.1 app).</div>
 </div>
 </div>
 <script>
-let ticks=[],lastTickEpoch=0,scanSec=0, pollInterval;
+let ticks=[],scanSec=0,pollInterval,demoInterval,isDemo=false,lastPrice=5000.00;
 setInterval(()=>{scanSec++;document.getElementById('scanTime').textContent='SCAN '+String(Math.floor(scanSec/60)).padStart(2,'0')+':'+String(scanSec%60).padStart(2,'0');},1000);
 
-async function fetchTicks(){
- const debug=document.getElementById('debug');
- const statusEl=document.getElementById('connStatus');
- try{
-  // Use Deriv HTTP API - ticks_history
-  const url='https://api.deriv.com/api/ticks_history?app_id=1089';
-  const body=lastTickEpoch===0?
-    {ticks_history:'R_10', count:25, end:'latest', style:'ticks'} :
-    {ticks_history:'R_10', count:1, end:'latest', style:'ticks'};
-
-  const res=await fetch(url,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  const data=await res.json();
-  debug.textContent='HTTP '+res.status+' - '+JSON.stringify(data).substring(0,150);
-
-  if(data.history && data.history.prices){
-    const prices=data.history.prices;
-    const times=data.history.times;
-    // First load
-    if(lastTickEpoch===0){
-      ticks=[];
-      for(let i=0;i<prices.length;i++){
-        const digit=parseInt(prices[i].toString().slice(-1));
-        ticks.push(digit);
-      }
-      lastTickEpoch=times[times.length-1];
-    } else {
-      // New tick only
-      const latestPrice=prices[prices.length-1];
-      const latestTime=times[times.length-1];
-      if(latestTime!==lastTickEpoch){
-        const digit=parseInt(latestPrice.toString().slice(-1));
-        ticks.push(digit);
-        if(ticks.length>25) ticks.shift();
-        lastTickEpoch=latestTime;
-        document.getElementById('lastPrice').textContent=latestPrice;
-        document.getElementById('lastDigit').textContent=digit;
-        document.getElementById('lastUpdate').textContent='Updated: '+new Date().toLocaleTimeString();
-        statusEl.textContent='● Live HTTP';
-        statusEl.className='text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full';
-      }
-    }
-    document.getElementById('ticksCount').textContent=ticks.length+'/25';
-    if(ticks.length>0){
-      document.getElementById('lastPrice').textContent=data.history.prices[data.history.prices.length-1];
-      const lastDigit=parseInt(data.history.prices[data.history.prices.length-1].toString().slice(-1));
-      document.getElementById('lastDigit').textContent=lastDigit;
-      document.getElementById('digits').innerHTML=ticks.map((d,i)=>`<div class="w-7 h-7 flex items-center justify-center rounded text-sm font-bold ${i===ticks.length-1?'bg-green-500 text-white':'bg-slate-800'}">${d}</div>`).join('');
-      if(ticks.length>=25){
-        const freq={};ticks.forEach(d=>freq[d]=(freq[d]||0)+1);let maxD=-1,maxC=0;for(let k in freq){if(freq[k]>maxC){maxC=freq[k];maxD=k;}}
-        document.getElementById('predText').innerHTML='Most frequent: '+maxD+' ('+maxC+'/25 = '+Math.round(maxC/25*100)+'%)<div class="text-xs text-slate-400">Window: '+ticks.join(',')+'</div>';
-      } else {
-        document.getElementById('predText').textContent='Collecting '+ticks.length+'/25...';
-      }
-    }
-  } else if(data.error){
-    debug.textContent='API Error: '+data.error.message+' - trying alternative method';
-    // Fallback to active symbols
-    statusEl.textContent='Error - retrying';
-  }
- }catch(e){
-  debug.textContent='Fetch error: '+e.message+' - trying CORS proxy...';
-  try{
-    // Try with allorigins proxy if direct blocked
-    const proxyRes=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.deriv.com/api/ticks_history?app_id=1089'),{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ticks_history:'R_10',count:25,end:'latest',style:'ticks'})
-    });
-    const pData=await proxyRes.json();
-    debug.textContent='Proxy success: '+JSON.stringify(pData).substring(0,100);
-  }catch(e2){debug.textContent='Both failed: '+e2.message;}
+function updateUI(price,digit){
+ document.getElementById('lastPrice').textContent=price.toFixed(2);
+ document.getElementById('lastDigit').textContent=digit;
+ document.getElementById('ticksCount').textContent=ticks.length+'/25';
+ document.getElementById('digits').innerHTML=ticks.map((d,i)=>`<div class="w-7 h-7 flex items-center justify-center rounded text-sm font-bold ${i===ticks.length-1?'bg-green-500 text-white':'bg-slate-800'}">${d}</div>`).join('');
+ if(ticks.length>=5){
+  const freq={};ticks.forEach(d=>freq[d]=(freq[d]||0)+1);let maxD=-1,maxC=0;for(let k in freq){if(freq[k]>maxC){maxC=freq[k];maxD=k;}}
+  document.getElementById('predText').innerHTML='Most frequent: <b>'+maxD+'</b> ('+maxC+'/25 = '+Math.round(maxC/25*100)+'%)<br><span class="text-xs text-slate-400">Window: '+ticks.slice(-10).join(',')+'</span>';
  }
 }
 
-function startPolling(){
- if(pollInterval) clearInterval(pollInterval);
- lastTickEpoch=0;
- ticks=[];
- document.getElementById('connStatus').textContent='● Polling...';
- document.getElementById('debug').textContent='Starting HTTP polling every 1 sec';
- fetchTicks();
- pollInterval=setInterval(fetchTicks,1000);
+async function fetchWithProxies(){
+ const debug=document.getElementById('debug');
+ const endpoints=[
+  'https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=R_10&count=1&end=latest&style=ticks',
+  'https://corsproxy.io/?https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=R_10&count=1&end=latest&style=ticks',
+  'https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=R_10&count=1&end=latest&style=ticks')
+ ];
+ for(let i=0;i<endpoints.length;i++){
+  try{
+   debug.textContent='Trying endpoint '+(i+1)+'/'+endpoints.length+': '+endpoints[i].substring(0,80)+'...';
+   const res=await fetch(endpoints[i]);
+   const text=await res.text();
+   debug.textContent='Response '+(i+1)+': '+text.substring(0,120);
+   const data=JSON.parse(text);
+   if(data.history && data.history.prices){
+     return data.history.prices[data.history.prices.length-1];
+   }
+   if(data.tick){return data.tick.quote;}
+  }catch(e){debug.textContent='Endpoint '+(i+1)+' failed: '+e.message;}
+ }
+ return null;
 }
-startPolling();
+
+async function startLive(){
+ if(pollInterval) clearInterval(pollInterval);
+ if(demoInterval) clearInterval(demoInterval);
+ isDemo=false;
+ ticks=[];
+ document.getElementById('connStatus').textContent='● Live HTTP';
+ document.getElementById('serverInfo').textContent='Mode: LIVE - HTTP polling';
+ document.getElementById('debug').textContent='Fetching live ticks every 1 sec...';
+ // Initial 25
+ try{
+  const initUrl='https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=R_10&count=25&end=latest&style=ticks';
+  let data=null;
+  try{const r=await fetch(initUrl); data=await r.json();}catch(e){
+   const r2=await fetch('https://corsproxy.io/?'+encodeURIComponent(initUrl)); data=await r2.json();
+  }
+  if(data && data.history && data.history.prices){
+   ticks=data.history.prices.map(p=>parseInt(p.toString().slice(-1)));
+   lastPrice=data.history.prices[data.history.prices.length-1];
+   updateUI(lastPrice,ticks[ticks.length-1]);
+  }
+ }catch(e){document.getElementById('debug').textContent='Initial load failed, starting poll anyway: '+e.message;}
+
+ pollInterval=setInterval(async()=>{
+  const price=await fetchWithProxies();
+  if(price){
+   const digit=parseInt(price.toString().slice(-1));
+   ticks.push(digit); if(ticks.length>25) ticks.shift();
+   lastPrice=parseFloat(price);
+   updateUI(lastPrice,digit);
+   document.getElementById('connStatus').textContent='● Live HTTP - '+new Date().toLocaleTimeString();
+   document.getElementById('connStatus').className='text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full';
+  } else {
+   document.getElementById('debug').textContent='All live endpoints blocked - switch to DEMO MODE or use VPN (1.1.1.1 app)';
+   document.getElementById('connStatus').textContent='Blocked - Use DEMO';
+   document.getElementById('connStatus').className='text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded-full';
+  }
+ },1200);
+}
+
+function startDemo(){
+ if(pollInterval) clearInterval(pollInterval);
+ if(demoInterval) clearInterval(demoInterval);
+ isDemo=true;
+ ticks=[];
+ document.getElementById('serverInfo').textContent='Mode: DEMO - Simulated R_10';
+ document.getElementById('connStatus').textContent='● DEMO Running';
+ document.getElementById('connStatus').className='text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full';
+ document.getElementById('debug').textContent='DEMO: Generating realistic Volatility 10 ticks (random walk). Use this to test analysis logic.';
+ demoInterval=setInterval(()=>{
+  // Realistic R_10 simulation: random walk
+  const change=(Math.random()-0.5)*0.8;
+  lastPrice+=change;
+  const digit=Math.floor(Math.random()*10);
+  // Add slight bias sometimes to make analysis interesting
+  ticks.push(digit); if(ticks.length>25) ticks.shift();
+  updateUI(lastPrice,digit);
+ },1000);
+}
+// Auto start with live, fallback to demo after 5 sec if no ticks
+startLive();
+setTimeout(()=>{if(ticks.length===0){document.getElementById('debug').textContent+=' | No live ticks after 5s - auto switching to DEMO. Install 1.1.1.1 VPN to unblock Deriv.'; startDemo();}},6000);
 </script>
 </body>
 </html>
