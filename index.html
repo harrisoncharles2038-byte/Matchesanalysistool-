@@ -3,50 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Digit Pro - FIXED V2</title>
+<title>Match Digit Pro V3 HTTP</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>body{font-family:Inter,sans-serif;background:#0a0f1e;color:#e2e8f0}.mono{font-family:monospace}.scanner-ring{animation:spin 3s linear infinite}@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>
+<style>body{font-family:Inter,sans-serif;background:#0a0f1e;color:#e2e8f0}.mono{font-family:monospace}</style>
 </head>
 <body class="min-h-screen p-3">
 <div class="max-w-md mx-auto">
 <div class="flex justify-between items-center bg-slate-900 rounded-xl p-3 mb-3 border border-slate-800">
-<div class="flex items-center gap-2"><div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold">M</div><div><div class="font-bold text-sm">Match Digit Pro</div><div class="text-xs text-slate-400">R_10 - Auto Connect</div></div></div>
-<div id="connStatus" class="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">Connecting...</div>
+<div class="flex items-center gap-2"><div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center font-bold">M</div><div><div class="font-bold text-sm">Match Digit Pro V3</div><div class="text-xs text-slate-400">R_10 HTTP Polling</div></div></div>
+<div id="connStatus" class="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full">Starting...</div>
 </div>
-<div class="bg-slate-900 rounded-xl p-3 border border-slate-800 text-center mb-2">
-<div class="text-xs text-slate-400" id="serverInfo">TRYING SERVERS...</div>
-<div id="lastPrice" class="mono text-xl font-bold mt-1">----.--</div>
-<div class="flex gap-2 mt-2"><div class="flex-1 bg-slate-800 rounded p-2"><div class="text-xs text-slate-500">LAST DIGIT</div><div id="lastDigit" class="text-2xl font-bold">-</div></div><div class="flex-1 bg-slate-800 rounded p-2"><div class="text-xs text-slate-500">TICKS COUNT</div><div id="ticksCount" class="text-2xl font-bold text-blue-400">0/25</div></div></div>
+<div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-center mb-2">
+<div class="text-xs text-slate-400">DERIV R_10 - HTTP MODE (No WebSocket)</div>
+<div id="lastPrice" class="mono text-2xl font-bold mt-2">----.--</div>
+<div class="flex gap-2 mt-3">
+<div class="flex-1 bg-slate-800 rounded-lg p-3"><div class="text-xs text-slate-500">LAST DIGIT</div><div id="lastDigit" class="text-3xl font-bold">-</div></div>
+<div class="flex-1 bg-slate-800 rounded-lg p-3"><div class="text-xs text-slate-500">TICKS</div><div id="ticksCount" class="text-3xl font-bold text-blue-400">0/25</div></div>
+</div>
 <div class="mt-3 text-xs mono" id="scanTime">SCAN 00:00</div>
 <div id="digits" class="flex gap-1 mt-3 flex-wrap justify-center"></div>
+<div class="mt-2 text-xs" id="lastUpdate">-</div>
 </div>
-<div class="bg-slate-900 rounded-xl p-3 border border-slate-800"><div class="text-xs text-slate-400">PREDICTION</div><div id="predText" class="text-green-400 font-bold">Waiting...</div><div id="debug" class="text-xs text-slate-500 mt-2 break-all"></div></div>
+<div class="bg-slate-900 rounded-xl p-3 border border-slate-800">
+<div class="text-xs text-slate-400">PREDICTION</div>
+<div id="predText" class="text-green-400 font-bold mt-1">Starting HTTP polling...</div>
+<div id="debug" class="text-xs text-slate-500 mt-2 break-all">Initializing...</div>
+<button onclick="startPolling()" class="mt-3 w-full bg-blue-600 py-2 rounded font-bold">RESTART CONNECTION</button>
+</div>
 </div>
 <script>
-let ticks=[],ws,scanSec=0,serverIndex=0;
-const servers=[
-'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-'wss://ws.derivws.com/websockets/v3?app_id=1089',
-'wss://ws.deriv.com/websockets/v3?app_id=1089'
-];
+let ticks=[],lastTickEpoch=0,scanSec=0, pollInterval;
 setInterval(()=>{scanSec++;document.getElementById('scanTime').textContent='SCAN '+String(Math.floor(scanSec/60)).padStart(2,'0')+':'+String(scanSec%60).padStart(2,'0');},1000);
-function connect(){
- const statusEl=document.getElementById('connStatus');
- const serverInfo=document.getElementById('serverInfo');
+
+async function fetchTicks(){
  const debug=document.getElementById('debug');
- const url=servers[serverIndex % servers.length];
- serverInfo.textContent='TRYING: '+url.split('/')[2];
- statusEl.textContent='Connecting...('+ (serverIndex+1) +'/'+servers.length+')';
- debug.textContent='Trying '+url;
+ const statusEl=document.getElementById('connStatus');
  try{
-  ws=new WebSocket(url);
-  ws.onopen=()=>{statusEl.textContent='● Live - '+url.split('/')[2];statusEl.className='text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full';serverInfo.textContent='CONNECTED: '+url.split('/')[2];debug.textContent='Connected! Subscribing to R_10...';ws.send(JSON.stringify({ticks:'R_10',subscribe:1}));};
-  ws.onmessage=(msg)=>{const data=JSON.parse(msg.data);if(data.msg_type==='tick'||data.tick){const price=data.tick.quote;const digit=parseInt(price.toString().slice(-1));ticks.push(digit);if(ticks.length>25)ticks.shift();document.getElementById('lastPrice').textContent=price;document.getElementById('lastDigit').textContent=digit;document.getElementById('ticksCount').textContent=ticks.length+'/25';document.getElementById('digits').innerHTML=ticks.map((d,i)=>`<div class="w-7 h-7 flex items-center justify-center rounded text-sm font-bold ${i===ticks.length-1?'bg-blue-500': 'bg-slate-800'}">${d}</div>`).join('');if(ticks.length>=5){document.getElementById('predText').textContent='Collecting '+ticks.length+'/25 - Digits: '+ticks.slice(-5).join(',');}if(ticks.length>=25){const freq={};ticks.forEach(d=>freq[d]=(freq[d]||0)+1);let maxD=-1,maxC=0;for(let k in freq){if(freq[k]>maxC){maxC=freq[k];maxD=k;}}document.getElementById('predText').textContent='Most frequent: '+maxD+' ('+maxC+'/25 = '+Math.round(maxC/25*100)+'%)';}}if(data.error){debug.textContent='API Error: '+data.error.message;}};
-  ws.onclose=()=>{statusEl.textContent='Reconnecting...';serverIndex++;setTimeout(connect,1500);};
-  ws.onerror=(e)=>{debug.textContent='WebSocket error, trying next server...';serverIndex++;setTimeout(connect,1000);};
- }catch(e){debug.textContent='Error: '+e.message;serverIndex++;setTimeout(connect,1000);}
+  // Use Deriv HTTP API - ticks_history
+  const url='https://api.deriv.com/api/ticks_history?app_id=1089';
+  const body=lastTickEpoch===0?
+    {ticks_history:'R_10', count:25, end:'latest', style:'ticks'} :
+    {ticks_history:'R_10', count:1, end:'latest', style:'ticks'};
+
+  const res=await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  const data=await res.json();
+  debug.textContent='HTTP '+res.status+' - '+JSON.stringify(data).substring(0,150);
+
+  if(data.history && data.history.prices){
+    const prices=data.history.prices;
+    const times=data.history.times;
+    // First load
+    if(lastTickEpoch===0){
+      ticks=[];
+      for(let i=0;i<prices.length;i++){
+        const digit=parseInt(prices[i].toString().slice(-1));
+        ticks.push(digit);
+      }
+      lastTickEpoch=times[times.length-1];
+    } else {
+      // New tick only
+      const latestPrice=prices[prices.length-1];
+      const latestTime=times[times.length-1];
+      if(latestTime!==lastTickEpoch){
+        const digit=parseInt(latestPrice.toString().slice(-1));
+        ticks.push(digit);
+        if(ticks.length>25) ticks.shift();
+        lastTickEpoch=latestTime;
+        document.getElementById('lastPrice').textContent=latestPrice;
+        document.getElementById('lastDigit').textContent=digit;
+        document.getElementById('lastUpdate').textContent='Updated: '+new Date().toLocaleTimeString();
+        statusEl.textContent='● Live HTTP';
+        statusEl.className='text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full';
+      }
+    }
+    document.getElementById('ticksCount').textContent=ticks.length+'/25';
+    if(ticks.length>0){
+      document.getElementById('lastPrice').textContent=data.history.prices[data.history.prices.length-1];
+      const lastDigit=parseInt(data.history.prices[data.history.prices.length-1].toString().slice(-1));
+      document.getElementById('lastDigit').textContent=lastDigit;
+      document.getElementById('digits').innerHTML=ticks.map((d,i)=>`<div class="w-7 h-7 flex items-center justify-center rounded text-sm font-bold ${i===ticks.length-1?'bg-green-500 text-white':'bg-slate-800'}">${d}</div>`).join('');
+      if(ticks.length>=25){
+        const freq={};ticks.forEach(d=>freq[d]=(freq[d]||0)+1);let maxD=-1,maxC=0;for(let k in freq){if(freq[k]>maxC){maxC=freq[k];maxD=k;}}
+        document.getElementById('predText').innerHTML='Most frequent: '+maxD+' ('+maxC+'/25 = '+Math.round(maxC/25*100)+'%)<div class="text-xs text-slate-400">Window: '+ticks.join(',')+'</div>';
+      } else {
+        document.getElementById('predText').textContent='Collecting '+ticks.length+'/25...';
+      }
+    }
+  } else if(data.error){
+    debug.textContent='API Error: '+data.error.message+' - trying alternative method';
+    // Fallback to active symbols
+    statusEl.textContent='Error - retrying';
+  }
+ }catch(e){
+  debug.textContent='Fetch error: '+e.message+' - trying CORS proxy...';
+  try{
+    // Try with allorigins proxy if direct blocked
+    const proxyRes=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.deriv.com/api/ticks_history?app_id=1089'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ticks_history:'R_10',count:25,end:'latest',style:'ticks'})
+    });
+    const pData=await proxyRes.json();
+    debug.textContent='Proxy success: '+JSON.stringify(pData).substring(0,100);
+  }catch(e2){debug.textContent='Both failed: '+e2.message;}
+ }
 }
-connect();
+
+function startPolling(){
+ if(pollInterval) clearInterval(pollInterval);
+ lastTickEpoch=0;
+ ticks=[];
+ document.getElementById('connStatus').textContent='● Polling...';
+ document.getElementById('debug').textContent='Starting HTTP polling every 1 sec';
+ fetchTicks();
+ pollInterval=setInterval(fetchTicks,1000);
+}
+startPolling();
 </script>
 </body>
 </html>
