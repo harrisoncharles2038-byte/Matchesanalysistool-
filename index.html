@@ -2,162 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>freematchesanalyzer - V8.1 Fixed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Digit V9 - VPN FIX</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@600;800&display=swap" rel="stylesheet">
-<style>*{font-family:'Inter',sans-serif}.mono{font-family:'JetBrains Mono',monospace}body{background:#070b14;color:#9aa4b2}.glass{background:linear-gradient(180deg,#111a2e 0%,#0d1528 100%);border:1px solid #1b2a4a}.circle-digit{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;border:2px solid #1e335c;background:#0a1224;color:#5a6d8a;transition:all 0.3s;position:relative}.circle-digit.active{background:#ffae00;color:#000;border-color:#ffae00;box-shadow:0 0 18px rgba(255,174,0,0.6);transform:scale(1.15)}.circle-digit.candidate{background:#0d2a4a;color:#2eb5ff;border-color:#2eb5ff;box-shadow:0 0 12px rgba(46,181,255,0.4)}.scan-ring{width:210px;height:210px;border-radius:50%;position:relative;margin:0 auto}.dot{position:absolute;width:44px;height:44px}</style>
+<style>body{background:#070b14;color:#9aa4b2;font-family:monospace}.glass{background:#111a2e;border:1px solid #1b2a4a}.digit{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #1e335c;background:#0a1224;transition:0.3s}.digit.on{background:#ffae00;color:#000;transform:scale(1.2)}</style>
 </head>
-<body class="p-2 pb-20">
-<div class="max-w-[420px] mx-auto">
-<div class="glass rounded-xl p-2.5">
-<div class="flex justify-between items-center text-[10px] mono">
-<div class="flex gap-2"><span class="bg-[#0f2a1a] text-[#2bde6a] border-[#1a4a2a] px-2 py-1 rounded">FEED LIVE</span><span class="bg-[#1a1a2a] text-[#8a8aa0] border-[#2a2a3a] px-2 py-1 rounded">OPEN DEMO</span><span class="text-[#3a4a6a]">HD1992167933</span></div><div id="vpnStatus" class="text-[#ffae00]">● CHECKING VPN</div>
+<body class="p-3">
+<div class="max-w-[400px] mx-auto">
+<div class="glass rounded-xl p-3">
+<div class="flex justify-between"><span id="status" class="text-[#ffae00]">● VPN CHECK - Turn ON Europe</span><span class="text-[10px]">V9 VPN ONLY</span></div>
+<div id="log" class="mt-2 bg-black rounded p-2 text-[10px] h-[80px] overflow-y-auto">Waiting for VPN...</div>
 </div>
-<div class="grid grid-cols-3 gap-1.5 mt-2.5">
-<button class="bg-[#1a1a1a] border-[#ff6a00]/30 text-[#ff8a33] text-[9px] py-1.5 rounded font-bold">HD1992167933</button>
-<button class="bg-[#1a1a1a] border-[#2a2a3a] text-[#6a6a7a] text-[9px] py-1.5 rounded">BOT96388542</button>
-<button id="btnDisconnect" class="bg-[#1a1a1a] border-[#2a2a3a] text-[#8a8a8a] text-[9px] py-1.5 rounded">Disconnect</button>
+
+<div class="glass rounded-xl p-3 mt-3 text-center">
+<div class="text-[10px]">Volatility 10 (1s) - <span id="state">ANALYZING</span></div>
+<div id="price" class="text-white text-[24px] font-black">----.--</div>
+<div id="lastD" class="text-[#ffae00] text-[32px] font-black">-</div>
+<div id="ring" class="grid grid-cols-5 gap-2 mt-4"></div>
+<div id="collect" class="mt-3 text-[#2eb5ff] text-[12px]">Collecting: 0/25</div>
+<div class="mt-3 flex justify-between"><span id="call">SCAN</span><span id="conf">--%</span></div>
+<div id="stream" class="flex justify-between mt-2"></div>
 </div>
-<div class="flex justify-between items-center mt-2.5 text-[10px]">
-<div id="conn" class="text-[#ff444f] mono">● Starting...</div>
-<div class="text-[#3a5a8a] mono">APP v8.1 FIXED</div>
-</div>
-<div id="fixBanner" class="hidden mt-2 bg-[#ffae00]/10 border-[#ffae00]/30 rounded p-2 text-[10px] text-[#ffae00]">Kenya block detected! Tap Opera VPN icon → Turn ON → Reload this page</div>
-</div>
-<div class="grid grid-cols-3 gap-1.5 mt-2">
-<div class="glass rounded-lg p-2.5"><div class="text-[8px] text-[#4a5a6a] mono">CH:MA</div><div class="text-[13px] font-extrabold text-white leading-none mt-1">Matches</div><div class="text-[9px] text-[#2bde6a] mono font-bold mt-1">FREE</div></div>
-<div class="glass rounded-lg p-2.5"><div class="text-[8px] text-[#4a5a6a] mono">CH:EO</div><div class="text-[13px] font-extrabold text-[#6a7a8a] leading-none mt-1">Even / Odd</div><div class="text-[9px] text-[#2bde6a] mono font-bold mt-1">FREE</div></div>
-<div class="glass rounded-lg p-2.5"><div class="text-[8px] text-[#4a5a6a] mono">CH:OU</div><div class="text-[13px] font-extrabold text-[#6a7a8a] leading-none mt-1">Over / Under</div><div class="text-[9px] text-[#2bde6a] mono font-bold mt-1">FREE</div></div>
-<div class="glass rounded-lg p-2.5"><div class="text-[8px] text-[#4a5a6a] mono">CH:HL</div><div class="text-[13px] font-extrabold text-[#6a7a8a] leading-none mt-1">Higher / Lower</div><div class="text-[9px] text-[#2bde6a] mono font-bold mt-1">FREE</div></div>
-<div class="glass rounded-lg p-2.5"><div class="text-[8px] text-[#4a5a6a] mono">CH:RF</div><div class="text-[13px] font-extrabold text-[#6a7a8a] leading-none mt-1">Rise / Fall</div><div class="text-[9px] text-[#2bde6a] mono font-bold mt-1">FREE</div></div>
-<div class="bg-[#ff6a00]/10 border-[#ff6a00]/20 rounded-lg p-2.5 flex items-center justify-center"><div class="text-center"><div class="text-[10px] text-[#ff8a33] font-bold">+ CONNECT</div><div class="text-[8px] text-[#8a6a4a]">Deriv API</div></div></div>
-</div>
-<div class="glass rounded-xl p-3 mt-2.5">
-<div class="flex justify-between items-start">
-<div><div class="text-[9px] text-[#4a5a6a] mono">CH:MA : Matches</div><div class="flex items-center gap-2 mt-0.5"><select id="marketSelect" class="bg-transparent text-white font-extrabold text-[15px] outline-none"><option value="R_10_1s">Volatility 10 (1s)</option><option value="R_25_1s">Volatility 25 (1s)</option><option value="R_50_1s">Volatility 50 (1s)</option><option value="R_75_1s">Volatility 75 (1s)</option><option value="R_100_1s">Volatility 100 (1s)</option><option value="R_10">Volatility 10</option><option value="R_100">Volatility 100</option></select><span id="scanState" class="text-[9px] bg-[#ffae00]/20 text-[#ffae00] px-2 py-0.5 rounded font-bold">ANALYZING</span></div></div>
-<div class="text-right"><div class="text-[10px] mono text-[#5a6a7a]">LIVE PRICE</div><div id="livePrice" class="text-white font-bold mono text-[14px]">----.--</div><div id="lastDigitBig" class="text-[20px] font-black text-[#ffae00] leading-none">-</div></div>
-</div>
-<div class="mt-5"><div id="circularScanner" class="scan-ring"></div>
-<div class="text-center mt-2"><div id="scanText" class="text-[11px] mono text-[#2eb5ff] font-bold tracking-widest">SCANNING 25T ROLLING</div><div id="candidateText" class="text-[10px] mono text-[#5a6a7a] mt-0.5">Collecting: 0/25</div></div>
-</div>
-<div class="mt-4">
-<div class="flex justify-between items-center"><div class="text-[9px] mono text-[#4a5a6a]">LAST 10 DIGITS</div><div class="text-[9px] mono text-[#2b5a8a]">Newest → right</div></div>
-<div id="digitStream" class="flex justify-between mt-1.5 px-1"></div>
-</div>
-<div class="grid grid-cols-2 gap-3 mt-4 border-t border-[#1b2a4a] pt-3">
-<div><div class="text-[8px] mono text-[#4a5a6a]">CALL</div><div id="callValue" class="text-[22px] font-black text-white leading-none mono">SCAN</div><div class="text-[8px] mono text-[#4a5a6a] mt-1">PERIOD</div><div id="periodValue" class="text-[14px] font-bold text-[#5a6a8a] mono">00110</div></div>
-<div class="text-right"><div class="text-[8px] mono text-[#4a5a6a]">CONFIDENCE</div><div id="confValue" class="text-[22px] font-black text-[#ffae00] leading-none mono">--%</div><div class="text-[8px] mono text-[#4a5a6a] mt-1">ACCESS</div><div class="text-[14px] font-bold text-[#2bde6a] mono">FREE</div></div>
-</div>
-<div class="mt-3 grid-cols-3 gap-2">
-<input id="tokenInput" type="password" placeholder="Deriv Token" class="col-span-2 bg-[#070b14] border-[#1b2a4a] rounded-lg px-3 py-2.5 text-[11px] mono text-white outline-none">
-<button id="btnConnect" class="bg-[#ff444f] text-white rounded-lg font-bold text-[11px]">Connect</button>
-</div>
-<div class="flex gap-2 mt-2">
-<div class="flex-1 flex items-center gap-2 bg-[#070b14] border-[#1b2a4a] rounded-lg px-3 py-2"><span class="text-[9px] text-[#4a5a6a] mono">STAKE ($):</span><input id="stake" value="10" class="bg-transparent w-12 text-white font-bold mono outline-none"></div>
-<label class="flex items-center gap-2 bg-[#070b14] border-[#1b2a4a] rounded-lg px-3 text-[10px]"><input id="autoTrade" type="checkbox"> Auto Trade</label>
-</div>
-<div id="authStatus" class="text-[10px] mono mt-2 text-[#5a6a7a]">Public feed - Click Login to trade.</div>
-<div class="mt-3 bg-[#070b14] border-[#1b2a4a]/50 rounded-lg p-2 grid-cols-4 gap-2 text-center">
-<div><div class="text-[7px] text-[#4a5a6a] mono">REAL WIN%</div><div id="statWin" class="text-[13px] font-bold text-white mono">0%</div></div>
-<div><div class="text-[7px] text-[#4a5a6a] mono">PROFIT</div><div id="statProfit" class="text-[13px] font-bold text-white mono">$0</div></div>
-<div><div class="text-[7px] text-[#4a5a6a] mono">W/L</div><div id="statWL" class="text-[11px] mono text-[#6a7a8a]">0/0</div></div>
-<div><div class="text-[7px] text-[#4a5a6a] mono">TRUTH</div><div id="statTruth" class="text-[8px] font-bold text-[#ffae00] leading-tight">10% per digit</div></div>
-</div>
-<div class="mt-3">
-<div class="flex justify-between items-center"><div class="text-[9px] mono text-[#4a5a6a]">LIVE TICK FEED (LATEST 25)</div><span id="feedStatus" class="text-[8px] text-[#ffae00]">Trying 5 methods...</span></div>
-<div id="tickFeed" class="mt-1.5 space-y-1 max-h-[200px] overflow-y-auto"></div>
+
+<div class="glass rounded-xl p-3 mt-3">
+<input id="tok" placeholder="Deriv Token" class="w-full bg-black border border-[#1b2a4a] p-2 rounded text-white text-[11px]">
+<div class="flex gap-2 mt-2"><input id="stake" value="10" class="flex-1 bg-black border border-[#1b2a4a] p-2 rounded text-white"><button id="btnC" class="bg-[#ff444f] text-white px-4 rounded">Connect</button><label class="flex items-center gap-1 text-[11px]"><input id="auto" type="checkbox">Auto</label></div>
+<div id="tradeLog" class="text-[10px] mt-2">Public feed - Login to trade</div>
 </div>
 </div>
-<div class="text-center mt-4 text-[9px] mono text-[#2a3a5a]">V8.1 - 5-method fetcher for Kenya. Educational. Past freq ≠ future.</div>
-</div>
+
 <script>
-const SYMBOL=document.getElementById('marketSelect');
-let marketData={ticks:[],price:0,digit:'-',best:'-',bestCount:0,bestPct:0,freq:Array(10).fill(0)};
-let ws=null,token=localStorage.getItem('deriv_token')||"",isAuth=false,tradeLock=false,methodUsed='none';
-let stats=JSON.parse(localStorage.getItem('freematch_stats')||'{"w":0,"l":0,"p":0}');
-document.getElementById('tokenInput').value=token;
-const ring=document.getElementById('circularScanner');const radius=85;const center=105;
-for(let i=0;i<10;i++){const angle=(i/10)*Math.PI*2-Math.PI/2;const x=center+radius*Math.cos(angle)-22;const y=center+radius*Math.sin(angle)-22;const el=document.createElement('div');el.className='dot';el.style.left=x+'px';el.style.top=y+'px';el.innerHTML=`<div id="c-${i}" class="circle-digit">${i}<span id="f-${i}" class="absolute -bottom-3 text-[7px] mono text-[#3a4a6a]">0/25</span></div>`;ring.appendChild(el);}
-function updateCircular(){for(let i=0;i<10;i++){const el=document.getElementById(`c-${i}`);const freqEl=document.getElementById(`f-${i}`);const count=marketData.freq[i]||0;freqEl.textContent=`${count}/25`;el.classList.remove('active','candidate');if(count>=6&&count===marketData.bestCount&&marketData.ticks.length>=25){el.classList.add('candidate');}if(i===marketData.digit&&marketData.ticks.length>0){el.classList.add('active');setTimeout(()=>el.classList.remove('active'),600);}}}
-function render(){document.getElementById('livePrice').textContent=marketData.price?marketData.price.toFixed(2):'----.--';document.getElementById('lastDigitBig').textContent=marketData.digit!=='-'?marketData.digit:'-';const stream=marketData.ticks.slice(-10);document.getElementById('digitStream').innerHTML=Array(10).fill(0).map((_,i)=>{const d=stream[i-(10-stream.length)]??'-';const isBest=d!=='-'&&String(d)===String(marketData.best)&&marketData.bestCount>=6;return `<div class="w-7 h-7 rounded ${isBest?'bg-[#ffae00] text-black':'bg-[#0f1a2e] text-[#6a7a8a]'} flex items-center justify-center font-bold mono text-[13px]">${d}</div>`;}).join('');if(marketData.ticks.length>=25){document.getElementById('callValue').textContent=marketData.bestCount>=6?`MATCH ${marketData.best}`:'NO EDGE';document.getElementById('callValue').className=`text-[22px] font-black leading-none mono ${marketData.bestCount>=6?'text-[#2bde6a]':'text-white'}`;document.getElementById('confValue').textContent=marketData.bestCount>=6?`${marketData.bestPct}%`:'0%';document.getElementById('periodValue').textContent=String(marketData.ticks.length).padStart(5,'0');document.getElementById('candidateText').textContent=`Candidates: ${marketData.freq.filter(c=>c>=6).length} | Best: ${marketData.best} x${marketData.bestCount} via ${methodUsed}`;document.getElementById('scanText').textContent=marketData.bestCount>=6?`🔥 ${marketData.bestCount} IN 25T - CALL MATCH ${marketData.best}`:'SCANNING 25T ROLLING';document.getElementById('scanState').textContent=marketData.bestCount>=6?'EDGE FOUND':'ANALYZING';}else{document.getElementById('callValue').textContent='SCAN';document.getElementById('confValue').textContent=`${Math.round(marketData.ticks.length/25*100)}%`;document.getElementById('candidateText').textContent=`Collecting: ${marketData.ticks.length}/25 via ${methodUsed}`; }updateCircular();updateStatsUI();}
-function addTickFeed(price,digit){const feed=document.getElementById('tickFeed');const time=new Date().toLocaleTimeString('en-GB',{hour12:false});const row=`<div class="flex justify-between bg-[#070b14] border-[#1b2a4a]/30 rounded px-2 py-1.5 text-[10px] mono"><span class="text-[#3a4a6a]">${time}</span><span class="text-[#6a7a8a]">${SYMBOL.value}</span><span class="text-white">${price.toFixed(3)}</span><span class="w-5 h-5 rounded bg-[#0f1a2e] text-[#ffae00] flex items-center justify-center font-bold">${digit}</span></div>`;feed.innerHTML=row+feed.innerHTML;if(feed.children.length>25) feed.lastElementChild.remove();}
-function updateMarket(price){const digit=parseInt(String(price).split('.').pop().slice(-1));if(isNaN(digit)) return;marketData.price=price;marketData.digit=digit;marketData.ticks.push(digit);if(marketData.ticks.length>25) marketData.ticks.shift();const freq=Array(10).fill(0);marketData.ticks.forEach(d=>freq[d]++);marketData.freq=freq;if(marketData.ticks.length>=10){let best=-1,bestC=0;freq.forEach((c,i)=>{if(c>bestC){bestC=c;best=i;}});marketData.best=best;marketData.bestCount=bestC;marketData.bestPct=Math.round(bestC/marketData.ticks.length*100);}addTickFeed(price,digit);render();if(isAuth&&document.getElementById('autoTrade').checked&&marketData.ticks.length>=25&&marketData.bestCount>=6&&!tradeLock){const stake=document.getElementById('stake').value||10;tradeLock=true;setTimeout(()=>tradeLock=false,5000);const params={amount:stake,basis:"stake",contract_type:"DIGITMATCH",symbol:SYMBOL.value,barrier:String(marketData.best),duration:1,duration_unit:"t"};document.getElementById('authStatus').textContent=`→ Auto-buy ${SYMBOL.value} MATCH ${marketData.best} $${stake} (${marketData.bestPct}%)`;ws.send(JSON.stringify({buy:1,price:stake,parameters:params}));}}
-async function fetchTick(symbol){
-  const derivDirect=`https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=${symbol}&count=1&end=latest&style=ticks`;
-  const methods=[
-    {name:'direct', url:derivDirect},
-    {name:'allorigins', url:`https://api.allorigins.win/raw?url=${encodeURIComponent(derivDirect)}`},
-    {name:'corsproxy', url:`https://corsproxy.io/?url=${encodeURIComponent(derivDirect)}`},
-    {name:'codetabs', url:`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(derivDirect)}`},
-    {name:'thingproxy', url:`https://thingproxy.freeboard.io/fetch/${derivDirect}`}
-  ];
-  for(let m of methods){
-    try{
-      document.getElementById('feedStatus').textContent=`Trying ${m.name}...`;
-      const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),6000);
-      const r=await fetch(m.url,{signal:ctrl.signal});
-      clearTimeout(t);
-      if(!r.ok) continue;
-      const j=await r.json();
-      if(j.history && j.history.prices && j.history.prices.length>0){
-        methodUsed=m.name;
-        document.getElementById('feedStatus').textContent=`Live via ${m.name}`;
-        document.getElementById('vpnStatus').textContent='● LIVE';
-        document.getElementById('vpnStatus').className='text-[#2bde6a]';
-        document.getElementById('fixBanner').classList.add('hidden');
-        return parseFloat(j.history.prices[0]);
-      }
-    }catch(e){ continue; }
+let ticks=[], freq=Array(10).fill(0), ws=null, best='-', bestC=0, token=localStorage.getItem('deriv_token')||'';
+document.getElementById('tok').value=token;
+const ring=document.getElementById('ring');
+for(let i=0;i<10;i++){let d=document.createElement('div');d.id='d-'+i;d.className='digit';d.innerHTML=`${i}<br><span style="font-size:7px" id="f-${i}">0</span>`;ring.appendChild(d);}
+
+function log(m){document.getElementById('log').innerHTML+=`<div>${new Date().toLocaleTimeString()} ${m}</div>`; document.getElementById('log').scrollTop=9999;}
+
+function update(p){
+  let digit=parseInt(String(p).split('.').pop().slice(-1)); if(isNaN(digit)) return;
+  ticks.push(digit); if(ticks.length>25) ticks.shift();
+  freq=Array(10).fill(0); ticks.forEach(d=>freq[d]++);
+  let b=-1,bc=0; freq.forEach((c,i)=>{if(c>bc){bc=c;b=i;}}); best=b; bestC=bc;
+  document.getElementById('price').textContent=p.toFixed(3);
+  document.getElementById('lastD').textContent=digit;
+  document.getElementById('collect').textContent=`Collecting: ${ticks.length}/25`;
+  document.getElementById('call').textContent=ticks.length>=25?(bestC>=6?`MATCH ${best}`:'NO EDGE'):'SCAN';
+  document.getElementById('conf').textContent=ticks.length>=25?`${Math.round(bestC/ticks.length*100)}%`:`${Math.round(ticks.length/25*100)}%`;
+  document.getElementById('stream').innerHTML=ticks.slice(-10).map(d=>`<div class="w-6 h-6 rounded ${d===best&&bestC>=6?'bg-[#ffae00] text-black':'bg-[#0f1a2e]'} flex items-center justify-center text-[11px]">${d}</div>`).join('');
+  for(let i=0;i<10;i++){let el=document.getElementById('d-'+i); el.classList.remove('on'); document.getElementById('f-'+i).textContent=freq[i]; if(i===digit) el.classList.add('on');}
+  if(ticks.length>=25 && document.getElementById('auto').checked && bestC>=6 && ws && ws.readyState===1 &&!window.lock){
+    window.lock=true; setTimeout(()=>window.lock=false,5000);
+    let stake=document.getElementById('stake').value||10;
+    let params={amount:stake,basis:"stake",contract_type:"DIGITMATCH",symbol:"R_10_1s",barrier:String(best),duration:1,duration_unit:"t"};
+    document.getElementById('tradeLog').textContent=`→ BUY MATCH ${best} $${stake}`;
+    ws.send(JSON.stringify({buy:1,price:stake,parameters:params}));
   }
-  document.getElementById('feedStatus').textContent='Blocked - Enable VPN';
-  document.getElementById('vpnStatus').textContent='● VPN NEEDED';
-  document.getElementById('vpnStatus').className='text-[#ff444f]';
-  document.getElementById('fixBanner').classList.remove('hidden');
-  document.getElementById('conn').textContent='● Blocked by Safaricom - Turn ON Opera VPN';
-  return null;
 }
-let httpInterval=null;
-function startLoop(){
-  if(httpInterval) clearInterval(httpInterval);
-  httpInterval=setInterval(async()=>{
-    if(ws && ws.readyState===1) return;
-    const price=await fetchTick(SYMBOL.value);
-    if(price) updateMarket(price);
-  },1200);
-}
-function connectWS(symbols){
-  const servers=["wss://ws.deriv.com/websockets/v3?app_id=1089","wss://ws.binaryws.com/websockets/v3?app_id=1089","wss://ws.derivws.com/websockets/v3?app_id=1089"];
+
+function connect(){
+  let servers=["wss://ws.deriv.com/websockets/v3?app_id=1089","wss://ws.binaryws.com/websockets/v3?app_id=1089","wss://ws.derivws.com/websockets/v3?app_id=1089"];
   let idx=0;
-  function tryOne(){
-    if(idx>=servers.length){ document.getElementById('conn').textContent='● WS blocked - HTTP 5-method mode'; startLoop(); return; }
-    if(ws) try{ws.close();}catch(e){}
+  function tryWS(){
+    if(idx>=servers.length){ log('All WS failed - Check VPN is Protected Europe + Bypass OFF'); document.getElementById('status').textContent='● WS FAILED - Recheck VPN settings'; document.getElementById('status').className='text-[#ff444f]'; return;}
+    log('Trying '+servers[idx]);
+    try{ if(ws) ws.close(); }catch(e){}
     ws=new WebSocket(servers[idx]);
-    let opened=false;
-    setTimeout(()=>{ if(!opened){ idx++; tryOne();}},4000);
-    ws.onopen=()=>{ opened=true; document.getElementById('conn').textContent='● Live via WS '+new URL(servers[idx]).host; document.getElementById('conn').className='text-[10px] mono text-[#2bde6a]'; if(httpInterval) clearInterval(httpInterval); if(token) ws.send(JSON.stringify({authorize:token})); symbols.forEach(s=>ws.send(JSON.stringify({ticks:s,subscribe:1}))); };
-    ws.onmessage=(e)=>{const d=JSON.parse(e.data);if(d.error){document.getElementById('authStatus').textContent='❌ '+d.error.message;return;}if(d.authorize){isAuth=true;document.getElementById('authStatus').textContent=`✅ ${d.authorize.loginid} $${Number(d.authorize.balance).toFixed(2)} | Auto-trade ready`;document.getElementById('conn').textContent=`● ${d.authorize.loginid} $${Number(d.authorize.balance).toFixed(2)}`;}if(d.tick) updateMarket(parseFloat(d.tick.quote));if(d.buy){document.getElementById('authStatus').textContent=`✅ BOUGHT ${d.buy.contract_id} $${d.buy_price}`;ws.send(JSON.stringify({proposal_open_contract:1,contract_id:d.buy.contract_id,subscribe:1}));}if(d.proposal_open_contract&&d.proposal_open_contract.is_sold){const won=d.proposal_open_contract.status==='won';const profit=parseFloat(d.proposal_open_contract.profit);if(won){stats.w++;stats.p+=profit;}else{stats.l++;stats.p+=profit;}localStorage.setItem('freematch_stats',JSON.stringify(stats));document.getElementById('authStatus').textContent=won?`✅ WON +$${profit.toFixed(2)}`:`❌ LOST $${profit.toFixed(2)}`;updateStatsUI();}};
-    ws.onerror=()=>{ idx++; tryOne(); };
+    let to=setTimeout(()=>{ log('Timeout '+servers[idx]); idx++; tryWS(); },5000);
+    ws.onopen=()=>{ clearTimeout(to); log('✅ CONNECTED '+servers[idx]); document.getElementById('status').textContent='● LIVE via '+new URL(servers[idx]).host; document.getElementById('status').className='text-[#2bde6a]'; if(token) ws.send(JSON.stringify({authorize:token})); ws.send(JSON.stringify({ticks:"R_10_1s",subscribe:1})); };
+    ws.onmessage=(e)=>{ let d=JSON.parse(e.data); if(d.error){ log('❌ '+d.error.message); return;} if(d.authorize){ log('✅ AUTH '+d.authorize.loginid+' $'+d.authorize.balance); document.getElementById('tradeLog').textContent=`✅ ${d.authorize.loginid} $${d.authorize.balance} Ready`;} if(d.tick){ update(parseFloat(d.tick.quote));} if(d.buy){ log('✅ BOUGHT '+d.buy.contract_id); ws.send(JSON.stringify({proposal_open_contract:1,contract_id:d.buy.contract_id,subscribe:1}));} if(d.proposal_open_contract && d.proposal_open_contract.is_sold){ log((d.proposal_open_contract.status==='won'?'WON ':'LOST ')+d.proposal_open_contract.profit); document.getElementById('tradeLog').textContent=(d.proposal_open_contract.status==='won'?'✅ WON ':'❌ LOST ')+'$'+d.proposal_open_contract.profit;} };
+    ws.onerror=()=>{ clearTimeout(to); log('WS error '+servers[idx]); idx++; tryWS(); };
+    ws.onclose=()=>{ log('Closed'); };
   }
-  tryOne();
+  tryWS();
 }
-function start(){
-  // Force WS when VPN is ON
-  document.getElementById('conn').textContent='● VPN ON - Connecting WS...';
-  document.getElementById('fixBanner').classList.add('hidden');
-  let selected=SYMBOL.value;
-  marketData={ticks:[],price:0,digit:'-',best:'-',bestCount:0,bestPct:0,freq:Array(10).fill(0)};
-  render();
-  // Try WS with VPN - will work now that you are Protected Europe
-  connectWS([selected]);
-  // Also start HTTP as backup
-  setTimeout(()=>{ if(marketData.ticks.length===0) startLoop(); }, 3000);
-};marketData={ticks:[],price:0,digit:'-',best:'-',bestCount:0,bestPct:0,freq:Array(10).fill(0)};render();connectWS([selected]);}
-function updateStatsUI(){const total=stats.w+stats.l;const winPct=total?Math.round(stats.w/total*100):0;document.getElementById('statWin').textContent=winPct+'%';document.getElementById('statProfit').textContent=(stats.p>=0?'+':'')+'$'+stats.p.toFixed(2);document.getElementById('statProfit').className=`text-[13px] font-bold mono ${stats.p>=0?'text-[#2bde6a]':'text-[#ff444f]'}`;document.getElementById('statWL').textContent=`${stats.w}/${stats.l}`;document.getElementById('statTruth').textContent=total>=20?(winPct>=30?'Luck run':'House edge'):'10% per digit';}
-document.getElementById('btnConnect').onclick=()=>{token=document.getElementById('tokenInput').value.trim();if(!token){alert('Paste Deriv token: deriv.com > Manage account > API Token > Create (Trade)');return;}localStorage.setItem('deriv_token',token);start();};
-document.getElementById('btnDisconnect').onclick=()=>{localStorage.removeItem('deriv_token');token="";isAuth=false;location.reload();};
-SYMBOL.onchange=start;
-start(); updateStatsUI();
+
+document.getElementById('btnC').onclick=()=>{ token=document.getElementById('tok').value.trim(); if(!token){ alert('Token needed: deriv.com > Manage account > API Token > Create Trade'); return;} localStorage.setItem('deriv_token',token); if(ws) ws.send(JSON.stringify({authorize:token})); };
+
+connect();
+setInterval(()=>{ if(ticks.length===0) log('Still 0/25 - Make sure Opera VPN shows Protected Europe + Bypass OFF + Reload'); },10000);
 </script>
 </body>
-  </html>
+</html>
