@@ -141,7 +141,18 @@ function connectWS(symbols){
   }
   tryOne();
 }
-function start(){let selected=SYMBOL.value;marketData={ticks:[],price:0,digit:'-',best:'-',bestCount:0,bestPct:0,freq:Array(10).fill(0)};render();connectWS([selected]);}
+function start(){
+  // Force WS when VPN is ON
+  document.getElementById('conn').textContent='● VPN ON - Connecting WS...';
+  document.getElementById('fixBanner').classList.add('hidden');
+  let selected=SYMBOL.value;
+  marketData={ticks:[],price:0,digit:'-',best:'-',bestCount:0,bestPct:0,freq:Array(10).fill(0)};
+  render();
+  // Try WS with VPN - will work now that you are Protected Europe
+  connectWS([selected]);
+  // Also start HTTP as backup
+  setTimeout(()=>{ if(marketData.ticks.length===0) startLoop(); }, 3000);
+};marketData={ticks:[],price:0,digit:'-',best:'-',bestCount:0,bestPct:0,freq:Array(10).fill(0)};render();connectWS([selected]);}
 function updateStatsUI(){const total=stats.w+stats.l;const winPct=total?Math.round(stats.w/total*100):0;document.getElementById('statWin').textContent=winPct+'%';document.getElementById('statProfit').textContent=(stats.p>=0?'+':'')+'$'+stats.p.toFixed(2);document.getElementById('statProfit').className=`text-[13px] font-bold mono ${stats.p>=0?'text-[#2bde6a]':'text-[#ff444f]'}`;document.getElementById('statWL').textContent=`${stats.w}/${stats.l}`;document.getElementById('statTruth').textContent=total>=20?(winPct>=30?'Luck run':'House edge'):'10% per digit';}
 document.getElementById('btnConnect').onclick=()=>{token=document.getElementById('tokenInput').value.trim();if(!token){alert('Paste Deriv token: deriv.com > Manage account > API Token > Create (Trade)');return;}localStorage.setItem('deriv_token',token);start();};
 document.getElementById('btnDisconnect').onclick=()=>{localStorage.removeItem('deriv_token');token="";isAuth=false;location.reload();};
