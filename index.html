@@ -3,84 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Digit V9 - VPN FIX</title>
+<title>Match Digit V10 HTTP</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>body{background:#070b14;color:#9aa4b2;font-family:monospace}.glass{background:#111a2e;border:1px solid #1b2a4a}.digit{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #1e335c;background:#0a1224;transition:0.3s}.digit.on{background:#ffae00;color:#000;transform:scale(1.2)}</style>
+<style>body{background:#070b14;color:#9aa4b2;font-family:monospace}.glass{background:#111a2e;border:1px solid #1b2a4a}.digit{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #1e335c;background:#0a1224}.digit.on{background:#ffae00;color:#000;transform:scale(1.2)}.log{font-size:9px;background:#000;border-radius:6px;padding:6px;height:70px;overflow:auto}</style>
 </head>
 <body class="p-3">
 <div class="max-w-[400px] mx-auto">
 <div class="glass rounded-xl p-3">
-<div class="flex justify-between"><span id="status" class="text-[#ffae00]">● VPN CHECK - Turn ON Europe</span><span class="text-[10px]">V9 VPN ONLY</span></div>
-<div id="log" class="mt-2 bg-black rounded p-2 text-[10px] h-[80px] overflow-y-auto">Waiting for VPN...</div>
+<div class="flex justify-between"><span id="status" class="text-[#ffae00]">● Starting HTTP mode</span><span class="text-[9px]">V10 HTTP FIX</span></div>
+<div id="log" class="log mt-2">Init...</div>
+<button onclick="start()" class="mt-2 w-full bg-[#2bde6a] text-black font-bold py-2 rounded">🔄 RETRY CONNECT</button>
 </div>
-
 <div class="glass rounded-xl p-3 mt-3 text-center">
 <div class="text-[10px]">Volatility 10 (1s) - <span id="state">ANALYZING</span></div>
 <div id="price" class="text-white text-[24px] font-black">----.--</div>
 <div id="lastD" class="text-[#ffae00] text-[32px] font-black">-</div>
-<div id="ring" class="grid grid-cols-5 gap-2 mt-4"></div>
-<div id="collect" class="mt-3 text-[#2eb5ff] text-[12px]">Collecting: 0/25</div>
-<div class="mt-3 flex justify-between"><span id="call">SCAN</span><span id="conf">--%</span></div>
+<div id="ring" class="grid grid-cols-5 gap-2 mt-3"></div>
+<div id="collect" class="mt-3 text-[#2eb5ff] text-[11px]">Collecting: 0/25 via none</div>
+<div class="mt-3 flex justify-between text-[12px]"><span id="call">SCAN</span><span id="conf">--%</span></div>
 <div id="stream" class="flex justify-between mt-2"></div>
 </div>
-
-<div class="glass rounded-xl p-3 mt-3">
-<input id="tok" placeholder="Deriv Token" class="w-full bg-black border border-[#1b2a4a] p-2 rounded text-white text-[11px]">
-<div class="flex gap-2 mt-2"><input id="stake" value="10" class="flex-1 bg-black border border-[#1b2a4a] p-2 rounded text-white"><button id="btnC" class="bg-[#ff444f] text-white px-4 rounded">Connect</button><label class="flex items-center gap-1 text-[11px]"><input id="auto" type="checkbox">Auto</label></div>
-<div id="tradeLog" class="text-[10px] mt-2">Public feed - Login to trade</div>
 </div>
-</div>
-
 <script>
-let ticks=[], freq=Array(10).fill(0), ws=null, best='-', bestC=0, token=localStorage.getItem('deriv_token')||'';
-document.getElementById('tok').value=token;
+let ticks=[], freq=Array(10).fill(0), best='-', bestC=0, method='none', loop=null;
 const ring=document.getElementById('ring');
 for(let i=0;i<10;i++){let d=document.createElement('div');d.id='d-'+i;d.className='digit';d.innerHTML=`${i}<br><span style="font-size:7px" id="f-${i}">0</span>`;ring.appendChild(d);}
-
-function log(m){document.getElementById('log').innerHTML+=`<div>${new Date().toLocaleTimeString()} ${m}</div>`; document.getElementById('log').scrollTop=9999;}
-
+function addLog(m){let e=document.getElementById('log'); e.innerHTML+=`<div>${new Date().toLocaleTimeString()} ${m}</div>`; e.scrollTop=999; }
+async function fetchTick(){
+  const symbol="R_10_1s";
+  const direct=`https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=${symbol}&count=1&end=latest&style=ticks`;
+  const proxies=[
+    {name:'direct', url:direct},
+    {name:'allorigins', url:`https://api.allorigins.win/get?url=${encodeURIComponent(direct)}`},
+    {name:'codetabs', url:`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(direct)}`},
+    {name:'corsproxy.io', url:`https://corsproxy.io/?${encodeURIComponent(direct)}`},
+    {name:'thingproxy', url:`https://thingproxy.freeboard.io/fetch/${direct}`}
+  ];
+  for(let p of proxies){
+    try{
+      addLog(`Trying ${p.name}...`);
+      document.getElementById('status').textContent=`● Trying ${p.name}...`;
+      let res=await fetch(p.url,{cache:'no-store'});
+      if(!res.ok) throw 'http '+res.status;
+      let j=await res.json();
+      // allorigins wraps in contents
+      if(j.contents){ j=JSON.parse(j.contents); }
+      if(j.history && j.history.prices && j.history.prices[0]){
+        method=p.name;
+        document.getElementById('status').textContent=`● LIVE via ${p.name}`;
+        document.getElementById('status').className='text-[#2bde6a]';
+        return parseFloat(j.history.prices[0]);
+      }
+    }catch(e){ addLog(`Fail ${p.name}: ${e}`); continue; }
+  }
+  document.getElementById('status').textContent=`● All blocked - Change VPN to Americas`;
+  document.getElementById('status').className='text-[#ff444f]';
+  addLog('All HTTP failed - Switch VPN location to Americas');
+  return null;
+}
 function update(p){
+  if(!p) return;
   let digit=parseInt(String(p).split('.').pop().slice(-1)); if(isNaN(digit)) return;
   ticks.push(digit); if(ticks.length>25) ticks.shift();
   freq=Array(10).fill(0); ticks.forEach(d=>freq[d]++);
   let b=-1,bc=0; freq.forEach((c,i)=>{if(c>bc){bc=c;b=i;}}); best=b; bestC=bc;
   document.getElementById('price').textContent=p.toFixed(3);
   document.getElementById('lastD').textContent=digit;
-  document.getElementById('collect').textContent=`Collecting: ${ticks.length}/25`;
+  document.getElementById('collect').textContent=`Collecting: ${ticks.length}/25 via ${method}`;
   document.getElementById('call').textContent=ticks.length>=25?(bestC>=6?`MATCH ${best}`:'NO EDGE'):'SCAN';
   document.getElementById('conf').textContent=ticks.length>=25?`${Math.round(bestC/ticks.length*100)}%`:`${Math.round(ticks.length/25*100)}%`;
   document.getElementById('stream').innerHTML=ticks.slice(-10).map(d=>`<div class="w-6 h-6 rounded ${d===best&&bestC>=6?'bg-[#ffae00] text-black':'bg-[#0f1a2e]'} flex items-center justify-center text-[11px]">${d}</div>`).join('');
   for(let i=0;i<10;i++){let el=document.getElementById('d-'+i); el.classList.remove('on'); document.getElementById('f-'+i).textContent=freq[i]; if(i===digit) el.classList.add('on');}
-  if(ticks.length>=25 && document.getElementById('auto').checked && bestC>=6 && ws && ws.readyState===1 &&!window.lock){
-    window.lock=true; setTimeout(()=>window.lock=false,5000);
-    let stake=document.getElementById('stake').value||10;
-    let params={amount:stake,basis:"stake",contract_type:"DIGITMATCH",symbol:"R_10_1s",barrier:String(best),duration:1,duration_unit:"t"};
-    document.getElementById('tradeLog').textContent=`→ BUY MATCH ${best} $${stake}`;
-    ws.send(JSON.stringify({buy:1,price:stake,parameters:params}));
-  }
 }
-
-function connect(){
-  let servers=["wss://ws.deriv.com/websockets/v3?app_id=1089","wss://ws.binaryws.com/websockets/v3?app_id=1089","wss://ws.derivws.com/websockets/v3?app_id=1089"];
-  let idx=0;
-  function tryWS(){
-    if(idx>=servers.length){ log('All WS failed - Check VPN is Protected Europe + Bypass OFF'); document.getElementById('status').textContent='● WS FAILED - Recheck VPN settings'; document.getElementById('status').className='text-[#ff444f]'; return;}
-    log('Trying '+servers[idx]);
-    try{ if(ws) ws.close(); }catch(e){}
-    ws=new WebSocket(servers[idx]);
-    let to=setTimeout(()=>{ log('Timeout '+servers[idx]); idx++; tryWS(); },5000);
-    ws.onopen=()=>{ clearTimeout(to); log('✅ CONNECTED '+servers[idx]); document.getElementById('status').textContent='● LIVE via '+new URL(servers[idx]).host; document.getElementById('status').className='text-[#2bde6a]'; if(token) ws.send(JSON.stringify({authorize:token})); ws.send(JSON.stringify({ticks:"R_10_1s",subscribe:1})); };
-    ws.onmessage=(e)=>{ let d=JSON.parse(e.data); if(d.error){ log('❌ '+d.error.message); return;} if(d.authorize){ log('✅ AUTH '+d.authorize.loginid+' $'+d.authorize.balance); document.getElementById('tradeLog').textContent=`✅ ${d.authorize.loginid} $${d.authorize.balance} Ready`;} if(d.tick){ update(parseFloat(d.tick.quote));} if(d.buy){ log('✅ BOUGHT '+d.buy.contract_id); ws.send(JSON.stringify({proposal_open_contract:1,contract_id:d.buy.contract_id,subscribe:1}));} if(d.proposal_open_contract && d.proposal_open_contract.is_sold){ log((d.proposal_open_contract.status==='won'?'WON ':'LOST ')+d.proposal_open_contract.profit); document.getElementById('tradeLog').textContent=(d.proposal_open_contract.status==='won'?'✅ WON ':'❌ LOST ')+'$'+d.proposal_open_contract.profit;} };
-    ws.onerror=()=>{ clearTimeout(to); log('WS error '+servers[idx]); idx++; tryWS(); };
-    ws.onclose=()=>{ log('Closed'); };
-  }
-  tryWS();
+async function start(){
+  addLog('Start loop - Make sure VPN = Americas or Asia + Bypass OFF');
+  if(loop) clearInterval(loop);
+  // try immediate
+  let pr=await fetchTick(); if(pr) update(pr);
+  loop=setInterval(async()=>{ let price=await fetchTick(); if(price) update(price); },1500);
 }
-
-document.getElementById('btnC').onclick=()=>{ token=document.getElementById('tok').value.trim(); if(!token){ alert('Token needed: deriv.com > Manage account > API Token > Create Trade'); return;} localStorage.setItem('deriv_token',token); if(ws) ws.send(JSON.stringify({authorize:token})); };
-
-connect();
-setInterval(()=>{ if(ticks.length===0) log('Still 0/25 - Make sure Opera VPN shows Protected Europe + Bypass OFF + Reload'); },10000);
+start();
 </script>
 </body>
 </html>
