@@ -3,86 +3,112 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Digit V10 HTTP</title>
+<title>Match Analyzer V11 WARP</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>body{background:#070b14;color:#9aa4b2;font-family:monospace}.glass{background:#111a2e;border:1px solid #1b2a4a}.digit{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #1e335c;background:#0a1224}.digit.on{background:#ffae00;color:#000;transform:scale(1.2)}.log{font-size:9px;background:#000;border-radius:6px;padding:6px;height:70px;overflow:auto}</style>
+<style>
+body{background:#070b14;color:#9aa4b2;font-family:monospace}
+.glass{background:#111a2e;border:1px solid #1b2a4a}
+.digit{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid #1e335c;background:#0a1224;transition:.2s}
+.digit.on{background:#ffae00;color:#000;transform:scale(1.2);box-shadow:0 0 12px #ffae00}
+.log{font-size:10px;background:#000;border-radius:8px;padding:8px;height:90px;overflow:auto;border:1px solid #1a2a4a}
+</style>
 </head>
-<body class="p-3">
+<body class="p-2">
 <div class="max-w-[400px] mx-auto">
 <div class="glass rounded-xl p-3">
-<div class="flex justify-between"><span id="status" class="text-[#ffae00]">● Starting HTTP mode</span><span class="text-[9px]">V10 HTTP FIX</span></div>
-<div id="log" class="log mt-2">Init...</div>
-<button onclick="start()" class="mt-2 w-full bg-[#2bde6a] text-black font-bold py-2 rounded">🔄 RETRY CONNECT</button>
+<div class="flex justify-between items-center">
+<span id="status" class="text-[#ffae00] text-[11px] font-bold">● WARP CHECK - Turn ON 1.1.1.1</span>
+<span class="text-[9px] bg-[#2bde6a] text-black px-2 py-1 rounded">V11 WARP</span>
 </div>
+<div id="log" class="log mt-2">Waiting for WARP...</div>
+<button onclick="location.reload()" class="mt-2 w-full bg-[#0f1a2e] border border-[#1b2a4a] text-white py-2 rounded text-[11px]">🔄 RELOAD</button>
+</div>
+
 <div class="glass rounded-xl p-3 mt-3 text-center">
-<div class="text-[10px]">Volatility 10 (1s) - <span id="state">ANALYZING</span></div>
-<div id="price" class="text-white text-[24px] font-black">----.--</div>
-<div id="lastD" class="text-[#ffae00] text-[32px] font-black">-</div>
+<div class="text-[10px]">Volatility 10 (1s) - <span id="state" class="text-white">ANALYZING</span></div>
+<div id="price" class="text-white text-[26px] font-black mt-1">----.---</div>
+<div id="lastD" class="text-[#ffae00] text-[36px] font-black leading-none">-</div>
+<div class="text-[9px] mt-1">Last Digit</div>
 <div id="ring" class="grid grid-cols-5 gap-2 mt-3"></div>
-<div id="collect" class="mt-3 text-[#2eb5ff] text-[11px]">Collecting: 0/25 via none</div>
-<div class="mt-3 flex justify-between text-[12px]"><span id="call">SCAN</span><span id="conf">--%</span></div>
-<div id="stream" class="flex justify-between mt-2"></div>
+<div id="collect" class="mt-3 text-[#2eb5ff] text-[12px] font-bold">Collecting: 0/25</div>
+<div class="mt-3 flex justify-between bg-black rounded p-2">
+<span id="call" class="text-white text-[12px] font-bold">SCAN</span>
+<span id="conf" class="text-[#ffae00] text-[12px]">--%</span>
+</div>
+<div id="stream" class="flex gap-1 justify-center mt-3 flex-wrap"></div>
+</div>
+
+<div class="glass rounded-xl p-3 mt-3">
+<input id="tok" placeholder="Paste Deriv API Token here" class="w-full bg-black border border-[#1b2a4a] p-2 rounded text-white text-[10px]">
+<div class="flex gap-2 mt-2">
+<input id="stake" value="1" class="w-[60px] bg-black border border-[#1b2a4a] p-2 rounded text-white text-center">
+<button id="btnC" class="flex-1 bg-[#ff444f] text-white font-bold rounded text-[12px]">Connect Deriv</button>
+<label class="flex items-center gap-1 text-[10px] bg-black px-2 rounded border border-[#1b2a4a]"><input id="auto" type="checkbox"> Auto</label>
+</div>
+<div id="tradeLog" class="text-[10px] mt-2 text-[#9aa4b2]">Public feed - Paste token to trade</div>
 </div>
 </div>
+
 <script>
-let ticks=[], freq=Array(10).fill(0), best='-', bestC=0, method='none', loop=null;
+let ticks=[], freq=Array(10).fill(0), ws=null, best='-', bestC=0, token=localStorage.getItem('deriv_token')||'', lock=false;
+document.getElementById('tok').value=token;
 const ring=document.getElementById('ring');
-for(let i=0;i<10;i++){let d=document.createElement('div');d.id='d-'+i;d.className='digit';d.innerHTML=`${i}<br><span style="font-size:7px" id="f-${i}">0</span>`;ring.appendChild(d);}
-function addLog(m){let e=document.getElementById('log'); e.innerHTML+=`<div>${new Date().toLocaleTimeString()} ${m}</div>`; e.scrollTop=999; }
-async function fetchTick(){
-  const symbol="R_10_1s";
-  const direct=`https://api.deriv.com/api/ticks_history?app_id=1089&ticks_history=${symbol}&count=1&end=latest&style=ticks`;
-  const proxies=[
-    {name:'direct', url:direct},
-    {name:'allorigins', url:`https://api.allorigins.win/get?url=${encodeURIComponent(direct)}`},
-    {name:'codetabs', url:`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(direct)}`},
-    {name:'corsproxy.io', url:`https://corsproxy.io/?${encodeURIComponent(direct)}`},
-    {name:'thingproxy', url:`https://thingproxy.freeboard.io/fetch/${direct}`}
-  ];
-  for(let p of proxies){
-    try{
-      addLog(`Trying ${p.name}...`);
-      document.getElementById('status').textContent=`● Trying ${p.name}...`;
-      let res=await fetch(p.url,{cache:'no-store'});
-      if(!res.ok) throw 'http '+res.status;
-      let j=await res.json();
-      // allorigins wraps in contents
-      if(j.contents){ j=JSON.parse(j.contents); }
-      if(j.history && j.history.prices && j.history.prices[0]){
-        method=p.name;
-        document.getElementById('status').textContent=`● LIVE via ${p.name}`;
-        document.getElementById('status').className='text-[#2bde6a]';
-        return parseFloat(j.history.prices[0]);
-      }
-    }catch(e){ addLog(`Fail ${p.name}: ${e}`); continue; }
-  }
-  document.getElementById('status').textContent=`● All blocked - Change VPN to Americas`;
-  document.getElementById('status').className='text-[#ff444f]';
-  addLog('All HTTP failed - Switch VPN location to Americas');
-  return null;
-}
+for(let i=0;i<10;i++){let d=document.createElement('div');d.id='d-'+i;d.className='digit';d.innerHTML=`${i}<div style="font-size:8px;margin-top:2px" id="f-${i}">0</div>`;ring.appendChild(d);}
+function log(m){let e=document.getElementById('log'); e.innerHTML+=`<div>[${new Date().toLocaleTimeString().slice(0,8)}] ${m}</div>`; e.scrollTop=999;}
 function update(p){
-  if(!p) return;
   let digit=parseInt(String(p).split('.').pop().slice(-1)); if(isNaN(digit)) return;
   ticks.push(digit); if(ticks.length>25) ticks.shift();
   freq=Array(10).fill(0); ticks.forEach(d=>freq[d]++);
   let b=-1,bc=0; freq.forEach((c,i)=>{if(c>bc){bc=c;b=i;}}); best=b; bestC=bc;
   document.getElementById('price').textContent=p.toFixed(3);
   document.getElementById('lastD').textContent=digit;
-  document.getElementById('collect').textContent=`Collecting: ${ticks.length}/25 via ${method}`;
-  document.getElementById('call').textContent=ticks.length>=25?(bestC>=6?`MATCH ${best}`:'NO EDGE'):'SCAN';
-  document.getElementById('conf').textContent=ticks.length>=25?`${Math.round(bestC/ticks.length*100)}%`:`${Math.round(ticks.length/25*100)}%`;
-  document.getElementById('stream').innerHTML=ticks.slice(-10).map(d=>`<div class="w-6 h-6 rounded ${d===best&&bestC>=6?'bg-[#ffae00] text-black':'bg-[#0f1a2e]'} flex items-center justify-center text-[11px]">${d}</div>`).join('');
+  document.getElementById('collect').textContent=`Collecting: ${ticks.length}/25 via WARP WS`;
+  document.getElementById('call').textContent=ticks.length>=25?(bestC>=6?`🔥 MATCH ${best} - ${bestC}/25`:'NO EDGE'):'SCANNING';
+  document.getElementById('conf').textContent=ticks.length>=25?`${Math.round(bestC/ticks.length*100)}% CONF`:`${Math.round(ticks.length/25*100)}%`;
+  document.getElementById('stream').innerHTML=ticks.slice(-15).map(d=>`<div class="w-7 h-7 rounded-full ${d===best&&bestC>=6?'bg-[#ffae00] text-black font-bold':'bg-[#0f1a2e] border border-[#1b2a4a]'} flex items-center justify-center text-[11px]">${d}</div>`).join('');
   for(let i=0;i<10;i++){let el=document.getElementById('d-'+i); el.classList.remove('on'); document.getElementById('f-'+i).textContent=freq[i]; if(i===digit) el.classList.add('on');}
+  // AUTO TRADE
+  if(ticks.length>=25 && document.getElementById('auto').checked && bestC>=6 && ws && ws.readyState===1 &&!lock){
+    lock=true; setTimeout(()=>lock=false,6000);
+    let stake=document.getElementById('stake').value||1;
+    let params={amount:parseFloat(stake),basis:"stake",contract_type:"DIGITMATCH",symbol:"R_10_1s",barrier:String(best),duration:1,duration_unit:"t"};
+    document.getElementById('tradeLog').innerHTML=`<span class="text-[#ffae00]">→ BUYING MATCH ${best} $${stake}...</span>`;
+    ws.send(JSON.stringify({buy:1,price:parseFloat(stake),parameters:params}));
+  }
 }
-async function start(){
-  addLog('Start loop - Make sure VPN = Americas or Asia + Bypass OFF');
-  if(loop) clearInterval(loop);
-  // try immediate
-  let pr=await fetchTick(); if(pr) update(pr);
-  loop=setInterval(async()=>{ let price=await fetchTick(); if(price) update(price); },1500);
+function connectWS(){
+  const servers=["wss://ws.derivws.com/websockets/v3?app_id=1089","wss://ws.deriv.com/websockets/v3?app_id=1089","wss://ws.binaryws.com/websockets/v3?app_id=1089"];
+  let idx=0;
+  function tryNext(){
+    if(idx>=servers.length){ log('❌ All WS failed - Make sure WARP shows Connected + Opera VPN OFF'); document.getElementById('status').textContent='● WARP OFF or Opera blocking'; document.getElementById('status').className='text-[#ff444f] text-[11px] font-bold'; return; }
+    let url=servers[idx];
+    log(`Trying ${new URL(url).host}...`);
+    try{ if(ws) ws.close(); }catch(e){}
+    ws=new WebSocket(url);
+    let to=setTimeout(()=>{ log(`Timeout ${url}`); idx++; tryNext(); },6000);
+    ws.onopen=()=>{ clearTimeout(to); log(`✅ LIVE ${new URL(url).host}`); document.getElementById('status').textContent=`● LIVE via ${new URL(url).host}`; document.getElementById('status').className='text-[#2bde6a] text-[11px] font-bold'; if(token) ws.send(JSON.stringify({authorize:token})); ws.send(JSON.stringify({ticks:"R_10_1s",subscribe:1})); };
+    ws.onmessage=(e)=>{
+      let d=JSON.parse(e.data);
+      if(d.error){ log(`❌ ${d.error.message}`); if(d.error.code==='InvalidToken'){ document.getElementById('tradeLog').textContent='❌ Invalid Token'; } return; }
+      if(d.authorize){ log(`✅ AUTH ${d.authorize.loginid} Balance $${d.authorize.balance}`); document.getElementById('tradeLog').innerHTML=`<span class="text-[#2bde6a]">✅ ${d.authorize.loginid} $${d.authorize.balance} Ready - Auto ${document.getElementById('auto').checked?'ON':'OFF'}</span>`; }
+      if(d.tick){ update(parseFloat(d.tick.quote)); }
+      if(d.buy){ log(`✅ BOUGHT ID ${d.buy.contract_id} $${d.buy.buy_price}`); document.getElementById('tradeLog').innerHTML=`<span class="text-[#2bde6a]">✅ Bought ${d.buy.contract_id}</span>`; ws.send(JSON.stringify({proposal_open_contract:1,contract_id:d.buy.contract_id,subscribe:1})); }
+      if(d.proposal_open_contract && d.proposal_open_contract.is_sold){ let won=d.proposal_open_contract.status==='won'; log(`${won?'✅ WON':'❌ LOST'} $${d.proposal_open_contract.profit}`); document.getElementById('tradeLog').innerHTML=`${won?'<span class="text-[#2bde6a]">✅ WON':'<span class="text-[#ff444f]">❌ LOST'} $${d.proposal_open_contract.profit.toFixed(2)}</span> | Next in 5s`; }
+    };
+    ws.onerror=()=>{ clearTimeout(to); log(`Error ${url}`); };
+    ws.onclose=()=>{ clearTimeout(to); log(`Closed ${new URL(url).host} - Reconnecting...`); setTimeout(()=>{ idx=0; tryNext(); },2000); };
+  }
+  tryNext();
 }
-start();
+document.getElementById('btnC').onclick=()=>{
+  token=document.getElementById('tok').value.trim();
+  if(!token){ alert('Go to Deriv.com > Account > API Token > Create token with Trade permission > Copy'); return; }
+  localStorage.setItem('deriv_token',token);
+  if(ws && ws.readyState===1) ws.send(JSON.stringify({authorize:token}));
+  else connectWS();
+};
+connectWS();
+setInterval(()=>{ if(ticks.length===0) log('Still 0/25? Check: 1) WARP Connected 2) Opera VPN OFF 3) Reload page'); },15000);
 </script>
 </body>
 </html>
